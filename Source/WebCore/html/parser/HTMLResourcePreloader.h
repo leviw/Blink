@@ -33,9 +33,9 @@ namespace WebCore {
 
 class PreloadRequest {
 public:
-    static PassOwnPtr<PreloadRequest> create(const String& initiator, const String& resourceURL, const KURL& baseURL, CachedResource::Type resourceType)
+    static PassOwnPtr<PreloadRequest> create(const String& initiator, const String& resourceURL, const KURL& baseURL, CachedResource::Type resourceType, const String& mediaAttr="")
     {
-        return adoptPtr(new PreloadRequest(initiator, resourceURL, baseURL, resourceType));
+        return adoptPtr(new PreloadRequest(initiator, resourceURL, baseURL, resourceType, mediaAttr));
     }
 
     bool isSafeToSendToAnotherThread() const;
@@ -43,16 +43,18 @@ public:
     CachedResourceRequest resourceRequest(Document*);
 
     const String& charset() const { return m_charset; }
+    const String& media() const { return m_mediaAttr; }
     void setCharset(const String& charset) { m_charset = charset.isolatedCopy(); }
     void setCrossOriginModeAllowsCookies(bool allowsCookies) { m_crossOriginModeAllowsCookies = allowsCookies; }
     CachedResource::Type resourceType() const { return m_resourceType; }
 
 private:
-    PreloadRequest(const String& initiator, const String& resourceURL, const KURL& baseURL, CachedResource::Type resourceType)
+    PreloadRequest(const String& initiator, const String& resourceURL, const KURL& baseURL, CachedResource::Type resourceType, const String& mediaAttr="")
         : m_initiator(initiator)
         , m_resourceURL(resourceURL.isolatedCopy())
         , m_baseURL(baseURL.copy())
         , m_resourceType(resourceType)
+        , m_mediaAttr(mediaAttr)
         , m_crossOriginModeAllowsCookies(false)
     {
     }
@@ -64,6 +66,7 @@ private:
     KURL m_baseURL;
     String m_charset;
     CachedResource::Type m_resourceType;
+    String m_mediaAttr;
     bool m_crossOriginModeAllowsCookies;
 };
 
@@ -86,6 +89,7 @@ public:
 private:
     Document* m_document;
     WeakPtrFactory<HTMLResourcePreloader> m_weakFactory;
+    static bool sourceMediaAttributeMatches(Frame* frame, RenderStyle* renderStyle, const String& attributeValue);
 };
 
 }

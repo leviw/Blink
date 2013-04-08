@@ -48,7 +48,7 @@ HTMLImageElement::HTMLImageElement(const QualifiedName& tagName, Document* docum
     , m_form(form)
     , m_compositeOperator(CompositeSourceOver)
 {
-    ASSERT(hasTagName(imgTag));
+    ASSERT((hasTagName(imgTag)) || (hasTagName(pictureTag)));
     if (form)
         form->registerImgElement(this);
 }
@@ -197,6 +197,10 @@ Node::InsertionNotificationRequest HTMLImageElement::insertedInto(ContainerNode*
     return HTMLElement::insertedInto(insertionPoint);
 }
 
+void HTMLImageElement::updateResources()
+{
+        m_imageLoader.updateFromElement();
+}
 void HTMLImageElement::removedFrom(ContainerNode* insertionPoint)
 {
     if (m_form)

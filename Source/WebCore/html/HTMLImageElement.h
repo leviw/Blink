@@ -82,11 +82,18 @@ protected:
     HTMLImageElement(const QualifiedName&, Document*, HTMLFormElement* = 0);
 
     virtual void didMoveToNewDocument(Document* oldDocument) OVERRIDE;
+    void updateResources();
 
+    virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
 private:
     virtual bool areAuthorShadowsAllowed() const OVERRIDE { return false; }
 
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
+    // Implementation of ImageLoaderClient
+    Element* sourceElement() { return this; }
+    Element* imageElement();
+    void refSourceElement() { ref(); }
+    void derefSourceElement() { deref(); }
+
     virtual bool isPresentationAttribute(const QualifiedName&) const OVERRIDE;
     virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStylePropertySet*) OVERRIDE;
 

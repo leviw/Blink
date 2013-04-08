@@ -31,6 +31,7 @@
 #include "EventNames.h"
 #include "HTMLDocument.h"
 #include "HTMLMediaElement.h"
+#include "HTMLPictureElement.h"
 #include "HTMLNames.h"
 #include "Logging.h"
 
@@ -59,6 +60,8 @@ Node::InsertionNotificationRequest HTMLSourceElement::insertedInto(ContainerNode
     Element* parent = parentElement();
     if (parent && parent->isMediaElement())
         static_cast<HTMLMediaElement*>(parentNode())->sourceWasAdded(this);
+    if (parent && parent->isPictureElement())
+        static_cast<HTMLPictureElement*>(parentNode())->sourceWasAdded();
     return InsertionDone;
 }
 
@@ -75,6 +78,11 @@ void HTMLSourceElement::removedFrom(ContainerNode* removalRoot)
 void HTMLSourceElement::setSrc(const String& url)
 {
     setAttribute(srcAttr, url);
+}
+
+String HTMLSourceElement::src() const
+{
+    return getAttribute(srcAttr);
 }
 
 String HTMLSourceElement::media() const

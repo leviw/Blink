@@ -122,3 +122,8 @@ tags
 .project
 .cproject
 .settings
+
+# Ignore patch overheads
+*.orig
+*.rej
+
