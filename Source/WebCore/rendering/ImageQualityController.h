@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Google Inc. All rights reserved.
+ * Copyright (C) 2013 Google Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -28,26 +28,50 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ScriptCachedFrameData_h
-#define ScriptCachedFrameData_h
+#ifndef ImageQualityController_h
+#define ImageQualityController_h
 
-// We don't use WebKit's page caching, so this implementation is just a stub.
+#include "Image.h"
+#include "ImageOrientation.h"
+#include "ImageSource.h"
+#include "IntSize.h"
+#include "LayoutSize.h"
+#include "RenderBoxModelObject.h"
+#include <wtf/HashMap.h>
 
 namespace WebCore {
 
-class Frame;
-class DOMWindow;
+typedef HashMap<const void*, LayoutSize> LayerSizeMap;
+typedef HashMap<RenderBoxModelObject*, LayerSizeMap> ObjectLayerSizeMap;
 
-class ScriptCachedFrameData  {
+class ImageQualityController {
+    WTF_MAKE_NONCOPYABLE(ImageQualityController); WTF_MAKE_FAST_ALLOCATED;
 public:
-    ScriptCachedFrameData(Frame*) { }
-    ~ScriptCachedFrameData() { }
+    virtual ~ImageQualityController();
 
-    void restore(Frame*) { }
-    void clear() { }
-    DOMWindow* domWindow() const { return 0; }
+    static ImageQualityController* imageQualityController();
+
+    static void remove(RenderBoxModelObject*);
+
+    bool shouldPaintAtLowQuality(GraphicsContext*, RenderBoxModelObject*, Image*, const void* layer, const LayoutSize&);
+
+private:
+    ImageQualityController();
+
+    void removeLayer(RenderBoxModelObject*, LayerSizeMap* innerMap, const void* layer);
+    void set(RenderBoxModelObject*, LayerSizeMap* innerMap, const void* layer, const LayoutSize&);
+    void objectDestroyed(RenderBoxModelObject*);
+    bool isEmpty() { return m_objectLayerSizeMap.isEmpty(); }
+
+    void highQualityRepaintTimerFired(Timer<ImageQualityController>*);
+    void restartTimer();
+
+    ObjectLayerSizeMap m_objectLayerSizeMap;
+    Timer<ImageQualityController> m_timer;
+    bool m_animatedResizeIsActive;
+    bool m_liveResizeOptimizationIsActive;
 };
 
 } // namespace WebCore
 
-#endif // ScriptCachedFrameData_h
+#endif
