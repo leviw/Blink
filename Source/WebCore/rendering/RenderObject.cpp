@@ -206,6 +206,8 @@ RenderObject* RenderObject::createObject(Element* element, RenderStyle* style)
     case GRID:
     case INLINE_GRID:
         return new (arena) RenderGrid(element);
+    case LAZY_OJAN:
+        return new (arena) RenderLazyBlock(element);
     }
 
     return 0;

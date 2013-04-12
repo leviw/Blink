@@ -32,6 +32,7 @@ namespace WebCore {
 
 class FlowThreadController;
 class RenderLayerCompositor;
+class RenderLazyBlock;
 class RenderQuote;
 class RenderWidget;
 
@@ -207,6 +208,10 @@ public:
     void setRenderQuoteHead(RenderQuote* head) { m_renderQuoteHead = head; }
     RenderQuote* renderQuoteHead() const { return m_renderQuoteHead; }
 
+    void setFirstLazyBlock(RenderLazyBlock* block) { m_firstLazyBlock = block; }
+    RenderLazyBlock* firstLazyBlock() const { return m_firstLazyBlock; }
+    void layoutLazyBlocks();
+
     // FIXME: This is a work around because the current implementation of counters
     // requires walking the entire tree repeatedly and most pages don't actually use either
     // feature so we shouldn't take the performance hit when not needed. Long term we should
@@ -255,6 +260,7 @@ private:
         state->destroy(renderArena());
     }
 
+public:
     // Suspends the LayoutState optimization. Used under transforms that cannot be represented by
     // LayoutState (common in SVG) and when manipulating the render tree during layout in ways
     // that can trigger repaint of a non-child (e.g. when a list item moves its list marker around).
@@ -263,6 +269,7 @@ private:
     void disableLayoutState() { m_layoutStateDisableCount++; }
     void enableLayoutState() { ASSERT(m_layoutStateDisableCount > 0); m_layoutStateDisableCount--; }
 
+private:
     void layoutContent(const LayoutState&);
     void layoutContentInAutoLogicalHeightRegions(const LayoutState&);
 #ifndef NDEBUG
@@ -313,7 +320,9 @@ private:
 
     LayoutUnit m_pageLogicalHeight;
     bool m_pageLogicalHeightChanged;
+public:
     LayoutState* m_layoutState;
+private:
     unsigned m_layoutStateDisableCount;
     OwnPtr<RenderLayerCompositor> m_compositor;
 #if USE(3D_GRAPHICS)
@@ -322,6 +331,7 @@ private:
     OwnPtr<FlowThreadController> m_flowThreadController;
     RefPtr<IntervalArena> m_intervalArena;
 
+    RenderLazyBlock* m_firstLazyBlock;
     RenderQuote* m_renderQuoteHead;
     unsigned m_renderCounterCount;
 };

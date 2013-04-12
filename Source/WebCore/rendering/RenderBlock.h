@@ -944,7 +944,9 @@ private:
 
     void adjustPointToColumnContents(LayoutPoint&) const;
     
+protected:
     void fitBorderToLinesIfNeeded(); // Shrink the box in which the border paints if border-fit is set.
+private:
     void adjustForBorderFit(LayoutUnit x, LayoutUnit& left, LayoutUnit& right) const; // Helper function for borderFitAdjust
 
     void markLinesDirtyInBlockRange(LayoutUnit logicalTop, LayoutUnit logicalBottom, RootInlineBox* highest = 0);
@@ -968,6 +970,7 @@ private:
     RenderBlock* containingColumnsBlock(bool allowAnonymousColumnBlock = true);
     RenderBlock* columnsBlockForSpanningElement(RenderObject* newChild);
 
+protected:
     class MarginInfo {
         // Collapsing flags for whether we can collapse our margins with our children's margins.
         bool m_canCollapseWithChildren : 1;

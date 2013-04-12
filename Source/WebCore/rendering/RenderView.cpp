@@ -37,6 +37,7 @@
 #include "RenderLayer.h"
 #include "RenderLayerBacking.h"
 #include "RenderLayerCompositor.h"
+#include "RenderLazyBlock.h"
 #include "RenderNamedFlowThread.h"
 #include "RenderSelectionInfo.h"
 #include "RenderWidget.h"
@@ -63,6 +64,7 @@ RenderView::RenderView(Document* document)
     , m_pageLogicalHeightChanged(false)
     , m_layoutState(0)
     , m_layoutStateDisableCount(0)
+    , m_firstLazyBlock(0)
     , m_renderQuoteHead(0)
     , m_renderCounterCount(0)
 {
@@ -113,6 +115,14 @@ LayoutUnit RenderView::availableLogicalHeight(AvailableLogicalHeightType heightT
 bool RenderView::isChildAllowed(RenderObject* child, RenderStyle*) const
 {
     return child->isBox();
+}
+
+void RenderView::layoutLazyBlocks()
+{
+    // FIXME: We should add padding around the viewport rect.
+    IntRect viewportRect = m_frameView->visibleContentRect(ScrollableArea::IncludeScrollbars);
+    for (RenderLazyBlock* block = firstLazyBlock(); block; block = block->next())
+        block->layoutVisibleChildrenInViewport(viewportRect);
 }
 
 void RenderView::layoutContent(const LayoutState& state)

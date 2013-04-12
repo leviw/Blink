@@ -1276,6 +1276,7 @@ static EDisplay equivalentBlockDisplay(EDisplay display, bool isFloating, bool s
     case BOX:
     case FLEX:
     case GRID:
+    case LAZY_OJAN:
         return display;
 
     case LIST_ITEM:
