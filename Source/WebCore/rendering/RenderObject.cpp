@@ -54,6 +54,7 @@
 #include "RenderLayer.h"
 #include "RenderLayerBacking.h"
 #include "RenderLayerCompositor.h"
+#include "RenderLazyBlock.h"
 #include "RenderListItem.h"
 #include "RenderMultiColumnBlock.h"
 #include "RenderNamedFlowThread.h"
