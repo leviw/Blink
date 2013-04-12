@@ -716,6 +716,7 @@ void RenderLayer::updateLayerPositionsAfterOverflowScroll()
     // FIXME: why is it OK to not check the ancestors of this layer in order to
     // initialize the HasSeenViewportConstrainedAncestor and HasSeenAncestorWithOverflowClip flags?
     updateLayerPositionsAfterScroll(&geometryMap, IsOverflowScroll);
+    view->layoutLazyBlocks();
 }
 
 void RenderLayer::updateLayerPositionsAfterScroll(RenderGeometryMap* geometryMap, UpdateLayerPositionsAfterScrollFlags flags)
