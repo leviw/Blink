@@ -71,7 +71,6 @@
 #include "Settings.h"
 #include "SharedBuffer.h"
 #include "StorageArea.h"
-#include "StorageMap.h"
 #include "StorageNamespace.h"
 #include "TextResourceDecoder.h"
 #include "VisitedLinkState.h"
@@ -640,7 +639,8 @@ void Page::setMediaVolume(float volume)
 
 void Page::setPageScaleFactor(float scale, const IntPoint& origin)
 {
-    FrameView* view = mainFrame()->view();
+    Document* document = mainFrame()->document();
+    FrameView* view = document->view();
 
     if (scale == m_pageScaleFactor) {
         if (view && view->scrollPosition() != origin)
@@ -650,9 +650,6 @@ void Page::setPageScaleFactor(float scale, const IntPoint& origin)
 
     m_pageScaleFactor = scale;
 
-    if (view)
-        view->setVisibleContentScaleFactor(scale);
-
     mainFrame()->deviceOrPageScaleFactorChanged();
 
     if (view && view->fixedElementsLayoutRelativeToFrame())
@@ -661,6 +658,7 @@ void Page::setPageScaleFactor(float scale, const IntPoint& origin)
     if (view && view->scrollPosition() != origin)
         view->setScrollPosition(origin);
 }
+
 
 void Page::setDeviceScaleFactor(float scaleFactor)
 {
@@ -875,9 +873,11 @@ void Page::visitedStateChanged(PageGroup* group, LinkHash linkHash)
 
 StorageNamespace* Page::sessionStorage(bool optionalCreate)
 {
-    if (!m_sessionStorage && optionalCreate)
-        m_sessionStorage = StorageNamespace::sessionStorageNamespace(this, StorageMap::noQuota);
-
+    if (!m_sessionStorage && optionalCreate) {
+        // FIXME: the quota value here is not needed or used in blink, crbug/230987
+        const unsigned int kBogusQuota = UINT_MAX;
+        m_sessionStorage = StorageNamespace::sessionStorageNamespace(this, kBogusQuota);
+    }
     return m_sessionStorage.get();
 }
 
