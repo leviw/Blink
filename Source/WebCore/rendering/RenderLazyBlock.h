@@ -48,8 +48,11 @@ public:
 
     void layoutVisibleChildrenInViewport(const IntRect& viewportRect);
 
-    RenderLazyBlock* next() { return m_next; }
-    RenderLazyBlock* previous() { return m_previous; }
+    RenderLazyBlock* next() const { return m_next; }
+    RenderLazyBlock* previous() const { return m_previous; }
+
+    RenderBox* firstVisibleChildBox() const { return m_firstVisibleChildBox; }
+    RenderBox* lastVisibleChildBox() const { return m_lastVisibleChildBox; }
 
 private:
     virtual bool hitTestContents(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) OVERRIDE;

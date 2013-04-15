@@ -85,6 +85,7 @@
 #include "RenderInline.h"
 #include "RenderLayerBacking.h"
 #include "RenderLayerCompositor.h"
+#include "RenderLazyBlock.h"
 #include "RenderMarquee.h"
 #include "RenderReplica.h"
 #include "RenderSVGResourceClipper.h"
@@ -3817,6 +3818,18 @@ void RenderLayer::paintList(Vector<RenderLayer*>* list, GraphicsContext* context
 #if !ASSERT_DISABLED
     LayerListMutationDetector mutationChecker(this);
 #endif
+
+    // Optimize lazy block case
+    if (renderer()->isRenderLazyBlock()) {
+        RenderLazyBlock* lazyBlock = toRenderLazyBlock(renderer());
+        RenderLayer* firstLayer = lazyBlock->firstVisibleChildBox()->layer();
+        RenderLayer* lastLayer = lazyBlock->lastVisibleChildBox()->layer();
+        if (firstLayer && lastLayer) {
+            for (RenderLayer* childLayer = firstLayer; childLayer != lastLayer->nextSibling(); childLayer->nextSibling())
+                childLayer->paintLayer(context, paintingInfo, paintFlags);
+            return;
+        }
+    }
 
     for (size_t i = 0; i < list->size(); ++i) {
         RenderLayer* childLayer = list->at(i);
