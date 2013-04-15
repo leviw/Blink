@@ -261,6 +261,7 @@ void RenderLazyBlock::layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalH
 
     for (RenderBox* child = firstChildBox(); child; child = child->nextSiblingBox()) {
         // FIXME: Enable guessing about height (will need to fix layoutVisibleChildrenInViewport)
+        updateBlockChildDirtyBitsBeforeLayout(relayoutChildren, child);
         if (child->style()->logicalHeight().isSpecified()) {
             LogicalExtentComputedValues computedValues;
             child->computeLogicalHeight(-1, height, computedValues);
@@ -281,11 +282,7 @@ void RenderLazyBlock::layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalH
     setLogicalHeight(height + afterEdge);
  
     // Calculate our new height.
-    LayoutUnit oldClientAfterEdge = clientLogicalBottom();
     updateLogicalHeight();
-
-    // Add overflow from children (unless we're multi-column, since in that case all our child overflow is clipped anyway).
-    computeOverflow(oldClientAfterEdge);
     
     statePusher.pop();
 
