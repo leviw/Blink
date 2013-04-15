@@ -260,25 +260,22 @@ void RenderLazyBlock::layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalH
     LayoutUnit height = beforeEdge;
 
     for (RenderBox* child = firstChildBox(); child; child = child->nextSiblingBox()) {
-        ASSERT(child->style()->logicalHeight().isSpecified());
-        LogicalExtentComputedValues computedValues;
-        child->computeLogicalHeight(-1, height, computedValues);
-        child->setLogicalHeight(computedValues.m_extent);
-        cacheChildLogicalHeight(child, computedValues.m_extent);
-        height += computedValues.m_extent;
-        if (relayoutChildren)
-            child->setNeedsLayout(true, MarkOnlyThis);
-        // LayoutUnit cachedHeight = cachedChildLogicalHeight(child);
-        // if (cachedHeight != -1) {
-        //     height += cachedHeight;
-        //     previousFloatLogicalBottom = maxFloatLogicalBottom = height;
-        //     setLogicalHeight(height);
-        // } else {
-        //     updateBlockChildDirtyBitsBeforeLayout(relayoutChildren, child);
-        //     layoutBlockChild(child, marginInfo, previousFloatLogicalBottom, maxFloatLogicalBottom);
-        //     height += child->logicalHeight();
-        //     cacheChildLogicalHeight(child, child->logicalHeight());
-        // }
+        // FIXME: Enable guessing about height (will need to fix layoutVisibleChildrenInViewport)
+        if (child->style()->logicalHeight().isSpecified()) {
+            LogicalExtentComputedValues computedValues;
+            child->computeLogicalHeight(-1, height, computedValues);
+            child->setLogicalHeight(computedValues.m_extent);
+            cacheChildLogicalHeight(child, computedValues.m_extent);
+            height += computedValues.m_extent;
+            if (relayoutChildren)
+                child->setNeedsLayout(true, MarkOnlyThis);
+        } else {
+            setLogicalHeight(height);
+            setLogicalTopForChild(child, height);
+            layoutBlockChild(child, marginInfo, height, height);
+            height += child->logicalHeight();
+            cacheChildLogicalHeight(child, child->logicalHeight());
+        }
     }
 
     setLogicalHeight(height + afterEdge);
