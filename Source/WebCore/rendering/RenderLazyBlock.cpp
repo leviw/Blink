@@ -64,6 +64,13 @@ void RenderLazyBlock::willBeRemovedFromTree()
         view()->removeLazyBlock(this);
 }
 
+void RenderLazyBlock::insertedIntoTree()
+{
+    RenderBlock::insertedIntoTree();
+    if (view() && !m_attached)
+        view()->addLazyBlock(this);
+}
+
 bool RenderLazyBlock::hitTestContents(const HitTestRequest& request, HitTestResult& result, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction hitTestAction)
 {
     HitTestAction childHitTest = hitTestAction;
@@ -91,9 +98,6 @@ void RenderLazyBlock::layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalH
 
     // FIXME: We should adjust the style to disallow columns too.
     ASSERT(!hasColumns());
-
-    if (!m_attached)
-        view()->addLazyBlock(this);
 
     LayoutRepainter repainter(*this, checkForRepaintDuringLayout());
 

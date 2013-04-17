@@ -51,6 +51,7 @@ private:
     virtual void willBeDestroyed() OVERRIDE;
     virtual void willBeRemovedFromTree() OVERRIDE;
     virtual void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight) OVERRIDE;
+    virtual void insertedIntoTree() OVERRIDE;
 
     RenderBox* m_firstVisibleChildBox;
     RenderBox* m_lastVisibleChildBox;
