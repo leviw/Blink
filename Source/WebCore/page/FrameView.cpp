@@ -1219,7 +1219,9 @@ void FrameView::layoutLazyBlocks()
         return;
 
     // First mark all lazy blocks as needing layout and perform another layout.
-    renderView()->markLazyBlocksForLayout();
+    for (RenderLazyBlock* block = renderView()->firstLazyBlock(); block; block = block->next())
+        block->markForNestedLayout();
+
     layout();
 
     // FIXME: This is pretty awful if you start nesting lazy blocks, we should

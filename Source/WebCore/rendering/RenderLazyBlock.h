@@ -43,6 +43,12 @@ public:
     bool isAttached() const { return m_attached; }
     bool isNested() const;
 
+    void markForNestedLayout()
+    {
+        setNeedsLayout(true);
+        m_isNestedLayout = true;
+    }
+
     RenderLazyBlock* next() const { return m_next; }
     RenderLazyBlock* previous() const { return m_previous; }
 
@@ -58,6 +64,8 @@ private:
     virtual void willBeRemovedFromTree() OVERRIDE;
     virtual void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight) OVERRIDE;
 
+    void layoutChildren(bool relayoutChildren);
+
     void attachLazyBlock();
     void detachLazyBlock();
 
@@ -66,6 +74,9 @@ private:
     RenderBox* m_firstVisibleChildBox;
     RenderBox* m_lastVisibleChildBox;
     bool m_attached;
+    bool m_isNestedLayout;
+    LayoutRect m_intersectRect;
+    IntRect m_expandedViewportRect;
 };
 
 inline RenderLazyBlock* toRenderLazyBlock(RenderObject* object)

@@ -45,6 +45,7 @@ RenderLazyBlock::RenderLazyBlock(Element* element)
     , m_firstVisibleChildBox(0)
     , m_lastVisibleChildBox(0)
     , m_attached(false)
+    , m_isNestedLayout(false)
 {
     setChildrenInline(false); // All of our children must be block-level.
 }
@@ -154,46 +155,25 @@ void RenderLazyBlock::paintChildren(PaintInfo& paintInfo, const LayoutPoint& pai
     }
 }
 
-void RenderLazyBlock::layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight)
+void RenderLazyBlock::layoutChildren(bool relayoutChildren)
 {
-    ASSERT(needsLayout());
-
-    if (!m_attached)
-        attachLazyBlock();
-
-    // FIXME: We should adjust the style to disallow columns too.
-    ASSERT(!hasColumns());
-
-    LayoutRepainter repainter(*this, checkForRepaintDuringLayout());
-
-    if (updateLogicalWidthAndColumnWidth())
-        relayoutChildren = true;
-
-    setLogicalHeight(borderAndPaddingLogicalHeight() + scrollbarLogicalHeight());
-
-    LayoutStateMaintainer statePusher(view(), this, locationOffset(), hasTransform() || hasReflection() || style()->isFlippedBlocksWritingMode());
-
     LayoutUnit beforeEdge = borderBefore() + paddingBefore();
     LayoutUnit afterEdge = borderAfter() + paddingAfter() + scrollbarLogicalHeight();
+    LayoutUnit height = beforeEdge;
+    LayoutRect intersectRect = m_intersectRect;
 
-    // We don't know what's visible since the viewport changed.
+    // FIXME: If we already have m_firstVisibleChildBox we should start there
+    // and stop when we have enough to fill the viewport. This catches the most
+    // common cases of scrolling upward or downward.
+
     m_firstVisibleChildBox = 0;
     m_lastVisibleChildBox = 0;
 
-    // FIXME: The compositor can instead give us a list of rects it thinks
-    // are important.
-    IntRect expandedViewportRect = view()->frameView()->visibleContentRect(ScrollableArea::IncludeScrollbars);
-    expandedViewportRect.expand(4000, 4000);
+    // FIXME: This should approximate the height so we don't actually need to walk
+    // every child and can optimistically layout children until we fill the
+    // the expandedViewportRect.
 
-    // FIXME: We probably want a RenderGeometryMap instead since we need to handle
-    // rotation of the RenderLazyBlock and other transforms.
-    Vector<FloatQuad> quads;
-    enclosingBoxModelObject()->absoluteQuads(quads);
-    LayoutRect intersectRect = quads[0].enclosingBoundingBox();
-    if (hasOverflowClip())
-        intersectRect.move(-scrolledContentOffset());
-
-    LayoutUnit height = beforeEdge;
+    setLogicalHeight(borderAndPaddingLogicalHeight() + scrollbarLogicalHeight());
 
     for (RenderBox* child = firstChildBox(); child; child = child->nextSiblingBox()) {
         updateBlockChildDirtyBitsBeforeLayout(relayoutChildren, child);
@@ -215,7 +195,7 @@ void RenderLazyBlock::layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalH
 
         intersectRect.setHeight(child->logicalHeight());
 
-        if (expandedViewportRect.intersects(enclosingIntRect(intersectRect))) {
+        if (m_expandedViewportRect.intersects(enclosingIntRect(intersectRect))) {
             if (!m_firstVisibleChildBox)
                 m_firstVisibleChildBox = child;
             m_lastVisibleChildBox = child->nextSiblingBox();
@@ -231,14 +211,47 @@ void RenderLazyBlock::layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalH
     setLogicalHeight(height + afterEdge);
 
     updateLogicalHeight();
+}
+
+void RenderLazyBlock::layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight)
+{
+    ASSERT(needsLayout());
+
+    if (!m_attached)
+        attachLazyBlock();
+
+    // FIXME: We should adjust the style to disallow columns too.
+    ASSERT(!hasColumns());
+
+    LayoutRepainter repainter(*this, checkForRepaintDuringLayout());
+    LayoutStateMaintainer statePusher(view(), this, locationOffset(), hasTransform() || hasReflection() || style()->isFlippedBlocksWritingMode());
+
+    // FIXME: The compositor can instead give us a list of rects it thinks
+    // are important.
+    IntRect expandedViewportRect = view()->frameView()->visibleContentRect(ScrollableArea::IncludeScrollbars);
+    expandedViewportRect.expand(4000, 4000);
+
+    // FIXME: We probably want a RenderGeometryMap instead since we need to handle
+    // rotation of the RenderLazyBlock and other transforms.
+    Vector<FloatQuad> quads;
+    enclosingBoxModelObject()->absoluteQuads(quads);
+    LayoutRect intersectRect = quads[0].enclosingBoundingBox();
+    if (hasOverflowClip())
+        intersectRect.move(-scrolledContentOffset());
+
+    // Avoid doing work inside the nested layout if we know everything is correct already.
+    if (!m_isNestedLayout || m_intersectRect != intersectRect || m_expandedViewportRect != expandedViewportRect) {
+        m_intersectRect = intersectRect;
+        m_expandedViewportRect = expandedViewportRect;
+        layoutChildren(relayoutChildren || updateLogicalWidthAndColumnWidth());
+    }
 
     statePusher.pop();
-
     updateLayerTransform();
-
     updateScrollInfoAfterLayout();
-
     repainter.repaintAfterLayout();
+
+    m_isNestedLayout = false;
     setNeedsLayout(false);
 }
 
