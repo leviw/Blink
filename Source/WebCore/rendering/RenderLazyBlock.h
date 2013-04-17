@@ -63,16 +63,17 @@ private:
     virtual void willBeRemovedFromTree() OVERRIDE;
     virtual void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight) OVERRIDE;
 
-    inline void clearChildLogicalHeightCache() {
+    void clearChildLogicalHeightCache()
+    {
         m_childLogicalHeightCache.clear();
     }
 
-    inline void cacheChildLogicalHeight(RenderBox* child, LayoutUnit height)
+    void cacheChildLogicalHeight(RenderBox* child, LayoutUnit height)
     {
         m_childLogicalHeightCache.set(child, height);
     }
 
-    inline LayoutUnit cachedChildLogicalHeight(RenderBox* child)
+    LayoutUnit cachedChildLogicalHeight(RenderBox* child)
     {
         ChildLogicalHeightCache::iterator iter = m_childLogicalHeightCache.find(child);
         if (iter != m_childLogicalHeightCache.end())
