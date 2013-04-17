@@ -60,6 +60,7 @@
 #include "RenderLayer.h"
 #include "RenderLayerBacking.h"
 #include "RenderLayerCompositor.h"
+#include "RenderLazyBlock.h"
 #include "RenderPart.h"
 #include "RenderScrollbar.h"
 #include "RenderScrollbarPart.h"
@@ -1156,6 +1157,8 @@ void FrameView::layout(bool allowSubtree)
         cache->postNotification(root, AXObjectCache::AXLayoutComplete, true);
     updateAnnotatedRegions();
 
+    layoutLazyBlocks();
+
     ASSERT(!root->needsLayout());
 
     updateCanBlitOnScrollRecursively();
@@ -1192,14 +1195,6 @@ void FrameView::layout(bool allowSubtree)
         m_actionScheduler->resume();
     }
 
-    // FIXME: This doesn't seem safe since the recursive layout call can trigger
-    // events that would require more layouts.
-    if (m_nestedLayoutCount == 1) {
-        renderView()->markLazyBlocksForLayout();
-        if (needsLayout())
-            layout();
-    }
-
     InspectorInstrumentation::didLayout(cookie, root);
 
     m_nestedLayoutCount--;
@@ -1211,6 +1206,33 @@ void FrameView::layout(bool allowSubtree)
         return;
 
     page->chrome()->client()->layoutUpdated(frame());
+}
+
+void FrameView::layoutLazyBlocks()
+{
+    // FIXME: This infinite recursion protection would seem to break plugins
+    // doing things that require lazy blocks to layout.
+    if (m_nestedLayoutCount != 1)
+        return;
+
+    if (!renderView()->firstLazyBlock())
+        return;
+
+    // First mark all lazy blocks as needing layout and perform another layout.
+    renderView()->markLazyBlocksForLayout();
+    layout();
+
+    // FIXME: This is pretty awful if you start nesting lazy blocks, we should
+    // signal to the nested blocks to avoid doing work until the second pass.
+
+    // Next walk all lazy blocks and find nested ones, these need another layout
+    // since the first one would not have placed them correctly inside the viewport.
+    for (RenderLazyBlock* block = renderView()->firstLazyBlock(); block; block = block->next()) {
+        if (!block->isNested())
+            continue;
+        block->setNeedsLayout(true);
+        layout();
+    }
 }
 
 RenderBox* FrameView::embeddedContentBox() const

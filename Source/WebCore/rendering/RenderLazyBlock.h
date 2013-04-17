@@ -40,6 +40,12 @@ public:
     RenderLazyBlock(Element*);
     virtual ~RenderLazyBlock();
 
+    bool isAttached() const { return m_attached; }
+    bool isNested() const;
+
+    RenderLazyBlock* next() const { return m_next; }
+    RenderLazyBlock* previous() const { return m_previous; }
+
     RenderBox* firstVisibleChildBox() const { return m_firstVisibleChildBox; }
     RenderBox* lastVisibleChildBox() const { return m_lastVisibleChildBox; }
 
@@ -51,8 +57,12 @@ private:
     virtual void willBeDestroyed() OVERRIDE;
     virtual void willBeRemovedFromTree() OVERRIDE;
     virtual void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight) OVERRIDE;
-    virtual void insertedIntoTree() OVERRIDE;
 
+    void attachLazyBlock();
+    void detachLazyBlock();
+
+    RenderLazyBlock* m_next;
+    RenderLazyBlock* m_previous;
     RenderBox* m_firstVisibleChildBox;
     RenderBox* m_lastVisibleChildBox;
     bool m_attached;

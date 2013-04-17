@@ -64,6 +64,7 @@ RenderView::RenderView(Document* document)
     , m_pageLogicalHeightChanged(false)
     , m_layoutState(0)
     , m_layoutStateDisableCount(0)
+    , m_firstLazyBlock(0)
     , m_renderQuoteHead(0)
     , m_renderCounterCount(0)
 {
@@ -118,8 +119,8 @@ bool RenderView::isChildAllowed(RenderObject* child, RenderStyle*) const
 
 void RenderView::markLazyBlocksForLayout()
 {
-    for (HashSet<RenderLazyBlock*>::iterator iter = m_lazyBlocks.begin(); iter != m_lazyBlocks.end(); ++iter)
-        (*iter)->setNeedsLayout(true);
+    for (RenderLazyBlock* block = m_firstLazyBlock; block; block = block->next())
+        block->setNeedsLayout(true);
 }
 
 void RenderView::layoutContent(const LayoutState& state)

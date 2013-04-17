@@ -208,8 +208,8 @@ public:
     void setRenderQuoteHead(RenderQuote* head) { m_renderQuoteHead = head; }
     RenderQuote* renderQuoteHead() const { return m_renderQuoteHead; }
 
-    void addLazyBlock(RenderLazyBlock* block) { m_lazyBlocks.add(block); }
-    void removeLazyBlock(RenderLazyBlock* block) { m_lazyBlocks.remove(block); }
+    void setFirstLazyBlock(RenderLazyBlock* block) { m_firstLazyBlock = block; }
+    RenderLazyBlock* firstLazyBlock() const { return m_firstLazyBlock; }
     void markLazyBlocksForLayout();
 
     // FIXME: This is a work around because the current implementation of counters
@@ -331,7 +331,7 @@ private:
     OwnPtr<FlowThreadController> m_flowThreadController;
     RefPtr<IntervalArena> m_intervalArena;
 
-    HashSet<RenderLazyBlock*> m_lazyBlocks;
+    RenderLazyBlock* m_firstLazyBlock;
     RenderQuote* m_renderQuoteHead;
     unsigned m_renderCounterCount;
 };

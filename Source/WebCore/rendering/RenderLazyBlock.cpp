@@ -40,6 +40,10 @@ namespace WebCore {
 
 RenderLazyBlock::RenderLazyBlock(Element* element)
     : RenderBlock(element)
+    , m_next(0)
+    , m_previous(0)
+    , m_firstVisibleChildBox(0)
+    , m_lastVisibleChildBox(0)
     , m_attached(false)
 {
     setChildrenInline(false); // All of our children must be block-level.
@@ -52,23 +56,81 @@ RenderLazyBlock::~RenderLazyBlock()
 
 void RenderLazyBlock::willBeDestroyed()
 {
-    if (view() && m_attached)
-        view()->removeLazyBlock(this);
+    detachLazyBlock();
     RenderBlock::willBeDestroyed();
 }
 
 void RenderLazyBlock::willBeRemovedFromTree()
 {
     RenderBlock::willBeRemovedFromTree();
-    if (view() && m_attached)
-        view()->removeLazyBlock(this);
+    detachLazyBlock();
 }
 
-void RenderLazyBlock::insertedIntoTree()
+bool RenderLazyBlock::isNested() const
 {
-    RenderBlock::insertedIntoTree();
-    if (view() && !m_attached)
-        view()->addLazyBlock(this);
+    for (RenderObject* ancestor = parent(); ancestor; ancestor = ancestor->parent()) {
+        if (ancestor->isRenderLazyBlock())
+            return true;
+    }
+    return false;
+}
+
+// FIXME: This method and detachLazyBlock are essentially identical to
+// RenderQuote::attachQuote and detachQuote. We should just have a
+// RenderTreeOrderedList that does this stuff internally.
+void RenderLazyBlock::attachLazyBlock()
+{
+    ASSERT(view());
+    ASSERT(!m_attached);
+    ASSERT(!m_next && !m_previous);
+    ASSERT(isRooted());
+
+    if (!view()->firstLazyBlock()) {
+        view()->setFirstLazyBlock(this);
+        m_attached = true;
+        return;
+    }
+
+    for (RenderObject* predecessor = previousInPreOrder(); predecessor; predecessor = predecessor->previousInPreOrder()) {
+        if (!predecessor->isRenderLazyBlock() || !toRenderLazyBlock(predecessor)->isAttached())
+            continue;
+        m_previous = toRenderLazyBlock(predecessor);
+        m_next = m_previous->m_next;
+        m_previous->m_next = this;
+        if (m_next)
+            m_next->m_previous = this;
+        break;
+    }
+
+    if (!m_previous) {
+        m_next = view()->firstLazyBlock();
+        view()->setFirstLazyBlock(this);
+        if (m_next)
+            m_next->m_previous = this;
+    }
+    m_attached = true;
+
+    ASSERT(!m_next || m_next->m_attached);
+    ASSERT(!m_next || m_next->m_previous == this);
+    ASSERT(!m_previous || m_previous->m_attached);
+    ASSERT(!m_previous || m_previous->m_next == this);
+}
+
+void RenderLazyBlock::detachLazyBlock()
+{
+    ASSERT(!m_next || m_next->m_attached);
+    ASSERT(!m_previous || m_previous->m_attached);
+    if (!m_attached)
+        return;
+    if (m_previous)
+        m_previous->m_next = m_next;
+    else if (view())
+        view()->setFirstLazyBlock(m_next);
+    if (m_next)
+        m_next->m_previous = m_previous;
+    m_attached = false;
+    m_next = 0;
+    m_previous = 0;
 }
 
 bool RenderLazyBlock::hitTestContents(const HitTestRequest& request, HitTestResult& result, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction hitTestAction)
@@ -95,6 +157,9 @@ void RenderLazyBlock::paintChildren(PaintInfo& paintInfo, const LayoutPoint& pai
 void RenderLazyBlock::layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight)
 {
     ASSERT(needsLayout());
+
+    if (!m_attached)
+        attachLazyBlock();
 
     // FIXME: We should adjust the style to disallow columns too.
     ASSERT(!hasColumns());
