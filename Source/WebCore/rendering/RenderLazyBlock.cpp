@@ -229,7 +229,8 @@ void RenderLazyBlock::layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalH
     // FIXME: The compositor can instead give us a list of rects it thinks
     // are important.
     IntRect expandedViewportRect = view()->frameView()->visibleContentRect(ScrollableArea::IncludeScrollbars);
-    expandedViewportRect.expand(4000, 4000);
+    expandedViewportRect.move(-4000, -4000);
+    expandedViewportRect.expand(8000, 8000);
 
     // FIXME: We probably want a RenderGeometryMap instead since we need to handle
     // rotation of the RenderLazyBlock and other transforms.
