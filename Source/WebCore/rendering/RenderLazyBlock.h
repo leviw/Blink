@@ -35,21 +35,10 @@
 
 namespace WebCore {
 
-typedef HashMap<RenderBox*, LayoutUnit> ChildLogicalHeightCache;
-
 class RenderLazyBlock FINAL : public RenderBlock {
 public:
     RenderLazyBlock(Element*);
     virtual ~RenderLazyBlock();
-
-    bool isAttached() const { return m_attached; }
-    void attachLazyBlock();
-    void detachLazyBlock();
-
-    void layoutVisibleChildrenInViewport(const IntRect& viewportRect);
-
-    RenderLazyBlock* next() const { return m_next; }
-    RenderLazyBlock* previous() const { return m_previous; }
 
     RenderBox* firstVisibleChildBox() const { return m_firstVisibleChildBox; }
     RenderBox* lastVisibleChildBox() const { return m_lastVisibleChildBox; }
@@ -63,28 +52,6 @@ private:
     virtual void willBeRemovedFromTree() OVERRIDE;
     virtual void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight) OVERRIDE;
 
-    void clearChildLogicalHeightCache()
-    {
-        m_childLogicalHeightCache.clear();
-    }
-
-    void cacheChildLogicalHeight(RenderBox* child, LayoutUnit height)
-    {
-        m_childLogicalHeightCache.set(child, height);
-    }
-
-    LayoutUnit cachedChildLogicalHeight(RenderBox* child)
-    {
-        ChildLogicalHeightCache::iterator iter = m_childLogicalHeightCache.find(child);
-        if (iter != m_childLogicalHeightCache.end())
-            return iter->value;
-        return -1;
-    }
-
-    ChildLogicalHeightCache m_childLogicalHeightCache;
-
-    RenderLazyBlock* m_next;
-    RenderLazyBlock* m_previous;
     RenderBox* m_firstVisibleChildBox;
     RenderBox* m_lastVisibleChildBox;
     bool m_attached;

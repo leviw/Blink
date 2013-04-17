@@ -64,7 +64,6 @@ RenderView::RenderView(Document* document)
     , m_pageLogicalHeightChanged(false)
     , m_layoutState(0)
     , m_layoutStateDisableCount(0)
-    , m_firstLazyBlock(0)
     , m_renderQuoteHead(0)
     , m_renderCounterCount(0)
 {
@@ -117,12 +116,10 @@ bool RenderView::isChildAllowed(RenderObject* child, RenderStyle*) const
     return child->isBox();
 }
 
-void RenderView::layoutLazyBlocks()
+void RenderView::markLazyBlocksForLayout()
 {
-    // FIXME: We should add padding around the viewport rect.
-    IntRect viewportRect = m_frameView->visibleContentRect(ScrollableArea::IncludeScrollbars);
-    for (RenderLazyBlock* block = firstLazyBlock(); block; block = block->next())
-        block->layoutVisibleChildrenInViewport(viewportRect);
+    for (HashSet<RenderLazyBlock*>::iterator iter = m_lazyBlocks.begin(); iter != m_lazyBlocks.end(); ++iter)
+        (*iter)->setNeedsLayout(true);
 }
 
 void RenderView::layoutContent(const LayoutState& state)

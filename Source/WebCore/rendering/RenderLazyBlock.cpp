@@ -40,8 +40,6 @@ namespace WebCore {
 
 RenderLazyBlock::RenderLazyBlock(Element* element)
     : RenderBlock(element)
-    , m_next(0)
-    , m_previous(0)
     , m_attached(false)
 {
     setChildrenInline(false); // All of our children must be block-level.
@@ -50,80 +48,20 @@ RenderLazyBlock::RenderLazyBlock(Element* element)
 RenderLazyBlock::~RenderLazyBlock()
 {
     ASSERT(!m_attached);
-    ASSERT(!m_next && !m_previous);
 }
 
 void RenderLazyBlock::willBeDestroyed()
 {
-    detachLazyBlock();
+    if (view() && m_attached)
+        view()->removeLazyBlock(this);
     RenderBlock::willBeDestroyed();
 }
 
 void RenderLazyBlock::willBeRemovedFromTree()
 {
     RenderBlock::willBeRemovedFromTree();
-    detachLazyBlock();
-}
-
-void RenderLazyBlock::layoutVisibleChildrenInViewport(const IntRect& viewportRect)
-{
-    // FIXME: Do we need to handle continuations?
-    ASSERT(!isAnonymousBlockContinuation());
-    // We shouldn't be in layout
-    ASSERT(view() && !view()->m_layoutState);
-
-    IntRect expandedViewportRect = viewportRect;
-    expandedViewportRect.expand(4000, 4000);
-
-    // FIXME: We probably want a RenderGeometryMap instead since we need to handle
-    // rotation of the RenderLazyBlock and other transforms.
-    Vector<FloatQuad> quads;
-    enclosingBoxModelObject()->absoluteQuads(quads);
-    LayoutRect rect = quads[0].enclosingBoundingBox();
-    if (hasOverflowClip())
-        rect.move(-scrolledContentOffset());
-
-    // FIXME: Setting the empty layout state breaks absolute coordinates so we
-    // need to do it after computing our rect. We should probably get a real
-    // layout state instead.
-    LayoutState layoutState;
-    view()->m_layoutState = &layoutState;
-
-    m_firstVisibleChildBox = m_lastVisibleChildBox = 0;
-    LayoutUnit oldHeight = logicalHeight();
-    LayoutUnit heightForChild = 0;
-    for (RenderBox* child = firstChildBox(); child; child = child->nextSiblingBox()) {
-        LayoutUnit height = cachedChildLogicalHeight(child);
-        rect.setHeight(height);
-        if (expandedViewportRect.intersects(enclosingIntRect(rect))) {
-            if (!m_firstVisibleChildBox)
-                m_firstVisibleChildBox = child;
-            m_lastVisibleChildBox = child->nextSiblingBox();
-            if (child->needsLayout()) {
-                setLogicalHeight(heightForChild);
-                setLogicalTopForChild(child, heightForChild);
-                child->layout();
-                // FIXME: This ia a huge hack. Updating these layers should be way easier since we know we're normal flow
-                if (child->layer()) {
-                    view()->disableLayoutState();
-                    child->layer()->updateLayerPositionsAfterLayout(view()->layer(), RenderLayer::defaultFlags);
-                    view()->enableLayoutState();
-                }
-                // FIXME: Repaint child
-                // FIXME: support non-fixed-height children
-                ASSERT(child->logicalHeight() == height);
-            }
-        } else if (m_firstVisibleChildBox)
-            break;
-        rect.setY(rect.y() + height);
-        heightForChild += height;
-    }
-    // FIXME: if we're guessing at our children's heights, we'll need to determine
-    // the proper final value
-    setLogicalHeight(oldHeight);
-    view()->m_layoutState = 0;
-    // FIXME: We should only have to repaint the children that were laid out
-    repaint();
+    if (view() && m_attached)
+        view()->removeLazyBlock(this);
 }
 
 bool RenderLazyBlock::hitTestContents(const HitTestRequest& request, HitTestResult& result, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction hitTestAction)
@@ -147,64 +85,6 @@ void RenderLazyBlock::paintChildren(PaintInfo& paintInfo, const LayoutPoint& pai
     }
 }
 
-// FIXME: This method and detachLazyBlock are essentially identical to
-// RenderQuote::attachQuote and detachQuote. We should just have a
-// RenderTreeOrderedList that does this stuff internally.
-void RenderLazyBlock::attachLazyBlock()
-{
-    ASSERT(view());
-    ASSERT(!m_attached);
-    ASSERT(!m_next && !m_previous);
-    ASSERT(isRooted());
-
-    if (!view()->firstLazyBlock()) {
-        view()->setFirstLazyBlock(this);
-        m_attached = true;
-        return;
-    }
-
-    for (RenderObject* predecessor = previousInPreOrder(); predecessor; predecessor = predecessor->previousInPreOrder()) {
-        if (!predecessor->isRenderLazyBlock() || !toRenderLazyBlock(predecessor)->isAttached())
-            continue;
-        m_previous = toRenderLazyBlock(predecessor);
-        m_next = m_previous->m_next;
-        m_previous->m_next = this;
-        if (m_next)
-            m_next->m_previous = this;
-        break;
-    }
-
-    if (!m_previous) {
-        m_next = view()->firstLazyBlock();
-        view()->setFirstLazyBlock(this);
-        if (m_next)
-            m_next->m_previous = this;
-    }
-    m_attached = true;
-
-    ASSERT(!m_next || m_next->m_attached);
-    ASSERT(!m_next || m_next->m_previous == this);
-    ASSERT(!m_previous || m_previous->m_attached);
-    ASSERT(!m_previous || m_previous->m_next == this);
-}
-
-void RenderLazyBlock::detachLazyBlock()
-{
-    ASSERT(!m_next || m_next->m_attached);
-    ASSERT(!m_previous || m_previous->m_attached);
-    if (!m_attached)
-        return;
-    if (m_previous)
-        m_previous->m_next = m_next;
-    else if (view())
-        view()->setFirstLazyBlock(m_next);
-    if (m_next)
-        m_next->m_previous = m_previous;
-    m_attached = false;
-    m_next = 0;
-    m_previous = 0;
-}
-
 void RenderLazyBlock::layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight)
 {
     ASSERT(needsLayout());
@@ -213,90 +93,83 @@ void RenderLazyBlock::layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalH
     ASSERT(!hasColumns());
 
     if (!m_attached)
-        attachLazyBlock();
+        view()->addLazyBlock(this);
 
     LayoutRepainter repainter(*this, checkForRepaintDuringLayout());
-
-    setLogicalHeight(0);
 
     if (updateLogicalWidthAndColumnWidth())
         relayoutChildren = true;
 
-    bool pageLogicalHeightChanged = false;
-    bool hasSpecifiedPageLogicalHeight = false;
-    checkForPaginationLogicalHeightChange(pageLogicalHeight, pageLogicalHeightChanged, hasSpecifiedPageLogicalHeight);
+    setLogicalHeight(borderAndPaddingLogicalHeight() + scrollbarLogicalHeight());
 
-    RenderView* renderView = view();
-    RenderStyle* styleToUse = style();
-    LayoutStateMaintainer statePusher(renderView, this, locationOffset(), hasTransform() || hasReflection() || styleToUse->isFlippedBlocksWritingMode(), pageLogicalHeight, pageLogicalHeightChanged);
-
-    // Assert we're not in a flow thread?
-
-    // We use four values, maxTopPos, maxTopNeg, maxBottomPos, and maxBottomNeg, to track
-    // our current maximal positive and negative margins.  These values are used when we
-    // are collapsed with adjacent blocks, so for example, if you have block A and B
-    // collapsing together, then you'd take the maximal positive margin from both A and B
-    // and subtract it from the maximal negative margin from both A and B to get the
-    // true collapsed margin.  This algorithm is recursive, so when we finish layout()
-    // our block knows its current maximal positive/negative values.
-    //
-    // Start out by setting our margin values to our current margins.
-    initMaxMarginValues();
-    setHasMarginBeforeQuirk(styleToUse->hasMarginBeforeQuirk());
-    setHasMarginAfterQuirk(styleToUse->hasMarginAfterQuirk());
-    setPaginationStrut(0);
-
-    if (relayoutChildren)
-        clearChildLogicalHeightCache();
+    LayoutStateMaintainer statePusher(view(), this, locationOffset(), hasTransform() || hasReflection() || style()->isFlippedBlocksWritingMode());
 
     LayoutUnit beforeEdge = borderBefore() + paddingBefore();
     LayoutUnit afterEdge = borderAfter() + paddingAfter() + scrollbarLogicalHeight();
 
-    setLogicalHeight(beforeEdge);
+    // We don't know what's visible since the viewport changed.
+    m_firstVisibleChildBox = 0;
+    m_lastVisibleChildBox = 0;
 
-    // The margin struct caches all our current margin collapsing state.  The compact struct caches state when we encounter compacts,
-    MarginInfo marginInfo(this, beforeEdge, afterEdge);
+    // FIXME: The compositor can instead give us a list of rects it thinks
+    // are important.
+    IntRect expandedViewportRect = view()->frameView()->visibleContentRect(ScrollableArea::IncludeScrollbars);
+    expandedViewportRect.expand(4000, 4000);
+
+    // FIXME: We probably want a RenderGeometryMap instead since we need to handle
+    // rotation of the RenderLazyBlock and other transforms.
+    Vector<FloatQuad> quads;
+    enclosingBoxModelObject()->absoluteQuads(quads);
+    LayoutRect intersectRect = quads[0].enclosingBoundingBox();
+    if (hasOverflowClip())
+        intersectRect.move(-scrolledContentOffset());
 
     LayoutUnit height = beforeEdge;
 
     for (RenderBox* child = firstChildBox(); child; child = child->nextSiblingBox()) {
-        // FIXME: Enable guessing about height (will need to fix layoutVisibleChildrenInViewport)
         updateBlockChildDirtyBitsBeforeLayout(relayoutChildren, child);
+
+        if (relayoutChildren)
+            child->setNeedsLayout(true, MarkOnlyThis);
+
         if (child->style()->logicalHeight().isSpecified()) {
             LogicalExtentComputedValues computedValues;
             child->computeLogicalHeight(-1, height, computedValues);
             child->setLogicalHeight(computedValues.m_extent);
-            cacheChildLogicalHeight(child, computedValues.m_extent);
-            height += computedValues.m_extent;
-            if (relayoutChildren)
-                child->setNeedsLayout(true, MarkOnlyThis);
         } else {
+            // FIXME: Enable guessing about height so we don't need to do layout
+            // on every non fixed height child.
             setLogicalHeight(height);
             setLogicalTopForChild(child, height);
-            layoutBlockChild(child, marginInfo, height, height);
-            height += child->logicalHeight();
-            cacheChildLogicalHeight(child, child->logicalHeight());
+            child->layoutIfNeeded();
         }
+
+        intersectRect.setHeight(child->logicalHeight());
+
+        if (expandedViewportRect.intersects(enclosingIntRect(intersectRect))) {
+            if (!m_firstVisibleChildBox)
+                m_firstVisibleChildBox = child;
+            m_lastVisibleChildBox = child->nextSiblingBox();
+            setLogicalHeight(height);
+            setLogicalTopForChild(child, height);
+            child->layoutIfNeeded();
+        }
+
+        intersectRect.setY(intersectRect.y() + child->logicalHeight());
+        height += child->logicalHeight();
     }
 
     setLogicalHeight(height + afterEdge);
- 
-    // Calculate our new height.
+
     updateLogicalHeight();
-    
+
     statePusher.pop();
-
-    fitBorderToLinesIfNeeded();
-
-    if (renderView->layoutState()->m_pageLogicalHeight)
-        setPageLogicalOffset(renderView->layoutState()->pageLogicalOffset(this, logicalTop()));
 
     updateLayerTransform();
 
-    // Update our scroll information if we're overflow:auto/scroll/hidden now that we know if
-    // we overflow or not.
     updateScrollInfoAfterLayout();
 
+    repainter.repaintAfterLayout();
     setNeedsLayout(false);
 }
 

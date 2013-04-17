@@ -1192,12 +1192,13 @@ void FrameView::layout(bool allowSubtree)
         m_actionScheduler->resume();
     }
 
-    // FIXME: We probably don't need to layout all lazy blocks when doing a subtree
-    // layout of an element that contains no lazy blocks. Perhaps a dirty bit for
-    // all lazy blocks that would have gone through a layout in the above
-    // root->layout() call.
-    if (RenderView* renderView = this->renderView())
-        renderView->layoutLazyBlocks();
+    // FIXME: This doesn't seem safe since the recursive layout call can trigger
+    // events that would require more layouts.
+    if (m_nestedLayoutCount == 1) {
+        renderView()->markLazyBlocksForLayout();
+        if (needsLayout())
+            layout();
+    }
 
     InspectorInstrumentation::didLayout(cookie, root);
 
@@ -1702,12 +1703,11 @@ void FrameView::scrollPositionChanged()
     frame()->eventHandler()->sendScrollEvent();
     frame()->eventHandler()->dispatchFakeMouseMoveEventSoon();
 
-    if (RenderView* renderView = this->renderView())
-        renderView->layoutLazyBlocks();
-
     if (RenderView* renderView = this->renderView()) {
         if (renderView->usesCompositing())
             renderView->compositor()->frameViewDidScroll();
+
+        renderView->markLazyBlocksForLayout();
     }
 }
 
