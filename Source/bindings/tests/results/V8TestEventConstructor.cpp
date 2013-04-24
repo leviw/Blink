@@ -26,6 +26,7 @@
 #include "Dictionary.h"
 #include "Frame.h"
 #include "RuntimeEnabledFeatures.h"
+#include "ScriptController.h"
 #include "V8Binding.h"
 #include "V8DOMWrapper.h"
 #include <wtf/UnusedParam.h>
@@ -64,6 +65,22 @@ inline void checkTypeOrDieTrying(TestEventConstructor* object)
 }
 #endif // ENABLE(BINDING_INTEGRITY)
 
+#if defined(OS_WIN)
+// In ScriptWrappable, the use of extern function prototypes inside templated static methods has an issue on windows.
+// These prototypes do not pick up the surrounding namespace, so drop out of WebCore as a workaround.
+} // namespace WebCore
+using WebCore::ScriptWrappable;
+using WebCore::V8TestEventConstructor;
+using WebCore::TestEventConstructor;
+#endif
+void initializeScriptWrappableForInterface(TestEventConstructor* object)
+{
+    if (ScriptWrappable::wrapperCanBeStoredInObject(object))
+        ScriptWrappable::setTypeInfoInObject(object, &V8TestEventConstructor::info);
+}
+#if defined(OS_WIN)
+namespace WebCore {
+#endif
 WrapperTypeInfo V8TestEventConstructor::info = { V8TestEventConstructor::GetTemplate, V8TestEventConstructor::derefObject, 0, 0, 0, V8TestEventConstructor::installPerContextPrototypeProperties, 0, WrapperTypeObjectPrototype };
 
 namespace TestEventConstructorV8Internal {
@@ -147,7 +164,7 @@ static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestEventConstructorTempl
         0, 0, isolate, currentWorldType);
     UNUSED_PARAM(defaultSignature); // In some cases, it will not be used.
     desc->SetCallHandler(V8TestEventConstructor::constructorCallback);
-    
+    desc->SetLength(1);
 
     // Custom toString template
     desc->Set(v8::String::NewSymbol("toString"), V8PerIsolateData::current()->toStringTemplate());

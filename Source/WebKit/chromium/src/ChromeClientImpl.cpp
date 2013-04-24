@@ -32,8 +32,8 @@
 #include "config.h"
 #include "ChromeClientImpl.h"
 
-#include "AXObjectCache.h"
-#include "AccessibilityObject.h"
+#include "core/accessibility/AXObjectCache.h"
+#include "core/accessibility/AccessibilityObject.h"
 #if ENABLE(INPUT_TYPE_COLOR)
 #include "ColorChooser.h"
 #include "ColorChooserClient.h"
@@ -53,7 +53,6 @@
 #include "ExternalPopupMenu.h"
 #include "FileChooser.h"
 #include "FileIconLoader.h"
-#include "FloatRect.h"
 #include "FrameLoadRequest.h"
 #include "FrameView.h"
 #include "Geolocation.h"
@@ -61,10 +60,9 @@
 #include "HTMLInputElement.h"
 #include "HTMLNames.h"
 #include "HitTestResult.h"
-#include "Icon.h"
-#include "IntRect.h"
 #include "NavigationAction.h"
 #include "Node.h"
+#include "NotImplemented.h"
 #include "Page.h"
 #include "PagePopupDriver.h"
 #include "PlatformScreen.h"
@@ -78,6 +76,9 @@
 #include "TextFieldDecorationElement.h"
 #include "WebAccessibilityObject.h"
 #include "WebAutofillClient.h"
+#include "core/platform/graphics/FloatRect.h"
+#include "core/platform/graphics/Icon.h"
+#include "core/platform/graphics/IntRect.h"
 #if ENABLE(INPUT_TYPE_COLOR)
 #include "WebColorChooser.h"
 #endif
@@ -423,7 +424,7 @@ bool ChromeClientImpl::runBeforeUnloadConfirmPanel(const String& message, Frame*
 void ChromeClientImpl::closeWindowSoon()
 {
     // Make sure this Page can no longer be found by JS.
-    m_webView->page()->setGroupName(String());
+    m_webView->page()->clearPageGroup();
 
     // Make sure that all loading is stopped.  Ensures that JS stops executing!
     m_webView->mainFrame()->stopLoading();
@@ -572,6 +573,13 @@ void ChromeClientImpl::deviceOrPageScaleFactorChanged() const
     m_webView->deviceOrPageScaleFactorChanged();
 }
 
+void ChromeClientImpl::didProgrammaticallyScroll(Frame* frame, const IntPoint& scrollPoint) const
+{
+    ASSERT(frame->view()->inProgrammaticScroll());
+    if (frame->page()->mainFrame() == frame)
+        m_webView->didProgrammaticallyScroll(scrollPoint);
+}
+
 void ChromeClientImpl::layoutUpdated(Frame* frame) const
 {
     m_webView->layoutUpdated(WebFrameImpl::fromFrame(frame));
@@ -636,6 +644,11 @@ static float calculateTargetDensityDPIFactor(const ViewportArguments& arguments,
     return targetDPI > 0 ? (deviceScaleFactor * 120.0f) / targetDPI : 1.0f;
 }
 
+static float getLayoutWidthForNonWideViewport(const ViewportArguments& arguments, const FloatSize& deviceSize, float initialScale)
+{
+    return arguments.zoom == ViewportArguments::ValueAuto ? deviceSize.width() : deviceSize.width() / initialScale;
+}
+
 void ChromeClientImpl::dispatchViewportPropertiesDidChange(const ViewportArguments& arguments) const
 {
 #if ENABLE(VIEWPORT)
@@ -656,15 +669,27 @@ void ChromeClientImpl::dispatchViewportPropertiesDidChange(const ViewportArgumen
         computed.maximumScale = max(computed.maximumScale, m_webView->maxPageScaleFactor);
         computed.userScalable = true;
     }
-    if (arguments.zoom == ViewportArguments::ValueAuto && !m_webView->settingsImpl()->initializeAtMinimumPageScale())
-        computed.initialScale = 1.0f;
-
+    float initialScale = computed.initialScale;
+    if (arguments.zoom == ViewportArguments::ValueAuto && !m_webView->settingsImpl()->initializeAtMinimumPageScale()) {
+        if (arguments.width == ViewportArguments::ValueAuto
+            || (m_webView->settingsImpl()->useWideViewport()
+                && arguments.width != ViewportArguments::ValueAuto && arguments.width != ViewportArguments::ValueDeviceWidth))
+            computed.initialScale = 1.0f;
+    }
     if (m_webView->settingsImpl()->supportDeprecatedTargetDensityDPI()) {
         float targetDensityDPIFactor = calculateTargetDensityDPIFactor(arguments, deviceScaleFactor);
         computed.initialScale *= targetDensityDPIFactor;
         computed.minimumScale *= targetDensityDPIFactor;
         computed.maximumScale *= targetDensityDPIFactor;
-        computed.layoutSize.scale(1.0f / targetDensityDPIFactor);
+
+        if (m_webView->settingsImpl()->useWideViewport() && arguments.width == ViewportArguments::ValueAuto && arguments.zoom != 1.0f)
+            computed.layoutSize.setWidth(m_webView->page()->settings()->layoutFallbackWidth());
+        else {
+            if (!m_webView->settingsImpl()->useWideViewport())
+                computed.layoutSize.setWidth(getLayoutWidthForNonWideViewport(arguments, viewportSize, initialScale));
+            if (!m_webView->settingsImpl()->useWideViewport() || arguments.width == ViewportArguments::ValueAuto || arguments.width == ViewportArguments::ValueDeviceWidth)
+                computed.layoutSize.scale(1.0f / targetDensityDPIFactor);
+        }
     }
 
     m_webView->setInitialPageScaleFactor(computed.initialScale);
@@ -733,11 +758,7 @@ void ChromeClientImpl::runOpenPanel(Frame* frame, PassRefPtr<FileChooser> fileCh
 
     WebFileChooserParams params;
     params.multiSelect = fileChooser->settings().allowsMultipleFiles;
-#if ENABLE(DIRECTORY_UPLOAD)
     params.directory = fileChooser->settings().allowsDirectoryUpload;
-#else
-    params.directory = false;
-#endif
     params.acceptTypes = fileChooser->settings().acceptTypes();
     params.selectedFiles = fileChooser->settings().selectedFiles;
     if (params.selectedFiles.size() > 0)
@@ -766,7 +787,6 @@ void ChromeClientImpl::loadIconForFiles(const Vector<String>& filenames, FileIco
         iconCompletion->didLoadIcon(WebData());
 }
 
-#if ENABLE(DIRECTORY_UPLOAD)
 void ChromeClientImpl::enumerateChosenDirectory(FileChooser* fileChooser)
 {
     WebViewClient* client = m_webView->client();
@@ -782,7 +802,6 @@ void ChromeClientImpl::enumerateChosenDirectory(FileChooser* fileChooser)
     if (!client->enumerateChosenDirectory(fileChooser->settings().selectedFiles[0], chooserCompletion))
         chooserCompletion->didChooseFile(WebVector<WebString>());
 }
-#endif
 
 void ChromeClientImpl::popupOpened(PopupContainer* popupContainer,
                                    const IntRect& bounds,
@@ -1127,12 +1146,10 @@ bool ChromeClientImpl::shouldAutoscrollForDragAndDrop(WebCore::RenderBox*) const
 }
 
 
-#if ENABLE(TOUCH_EVENTS)
 void ChromeClientImpl::needTouchEvents(bool needsTouchEvents)
 {
     m_webView->hasTouchEventHandlers(needsTouchEvents);
 }
-#endif // ENABLE(TOUCH_EVENTS)
 
 bool ChromeClientImpl::requestPointerLock()
 {

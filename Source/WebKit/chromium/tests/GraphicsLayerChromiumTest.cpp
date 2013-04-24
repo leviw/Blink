@@ -26,13 +26,13 @@
 
 #include "GraphicsLayerChromium.h"
 
+#include <gtest/gtest.h>
 #include "CompositorFakeWebGraphicsContext3D.h"
-#include "GraphicsLayer.h"
 #include "Matrix3DTransformOperation.h"
 #include "RotateTransformOperation.h"
 #include "ScrollableArea.h"
 #include "TranslateTransformOperation.h"
-#include <gtest/gtest.h>
+#include "core/platform/graphics/GraphicsLayer.h"
 #include <public/Platform.h>
 #include <public/WebCompositorSupport.h>
 #include <public/WebFloatAnimationCurve.h>
@@ -146,7 +146,7 @@ TEST_F(GraphicsLayerChromiumTest, applyScrollToScrollableArea)
     EXPECT_EQ(scrollPosition, WebPoint(scrollableArea.scrollPosition()));
 }
 
-TEST_F(GraphicsLayerChromiumTest, setContentsToSolidColor)
+TEST_F(GraphicsLayerChromiumTest, DISABLED_setContentsToSolidColor)
 {
     m_graphicsLayer->setContentsToSolidColor(Color::transparent);
     EXPECT_FALSE(m_graphicsLayer->contentsLayer());

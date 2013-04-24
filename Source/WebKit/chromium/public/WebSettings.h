@@ -53,6 +53,7 @@ public:
     };
 
     virtual bool scrollAnimatorEnabled() const = 0;
+    virtual bool touchEditingEnabled() const = 0;
     virtual bool viewportEnabled() const = 0;
     virtual void setAccelerated2dCanvasEnabled(bool) = 0;
     virtual void setAcceleratedCompositingEnabled(bool) = 0;
@@ -101,7 +102,6 @@ public:
     virtual void setExperimentalCSSVariablesEnabled(bool) = 0;
     virtual void setExperimentalWebGLEnabled(bool) = 0;
     virtual void setFantasyFontFamily(const WebString&, UScriptCode = USCRIPT_COMMON) = 0;
-    virtual void setFixedElementsLayoutRelativeToFrame(bool) = 0;
     virtual void setFixedFontFamily(const WebString&, UScriptCode = USCRIPT_COMMON) = 0;
     virtual void setFixedPositionCreatesStackingContext(bool) = 0;
     virtual void setFontRenderingModeNormal() = 0;
@@ -125,7 +125,7 @@ public:
     virtual void setMinimumAccelerated2dCanvasSize(int) = 0;
     virtual void setMinimumFontSize(int) = 0;
     virtual void setMinimumLogicalFontSize(int) = 0;
-    virtual void setMinimumTimerInterval(double) = 0;
+    virtual void setMinimumTimerInterval(double) = 0; // FIXME: remove this once the embedder is no longer calling it.
     virtual void setMockScrollbarsEnabled(bool) = 0;
     virtual void setNeedsSiteSpecificQuirks(bool) = 0;
     virtual void setOfflineWebApplicationCacheEnabled(bool) = 0;
@@ -149,6 +149,7 @@ public:
     virtual void setShowPaintRects(bool) = 0;
     virtual void setShrinksStandaloneImagesToFit(bool) = 0;
     virtual void setSmartInsertDeleteEnabled(bool) = 0;
+    virtual void setSpatialNavigationEnabled(bool) = 0;
     virtual void setStandardFontFamily(const WebString&, UScriptCode = USCRIPT_COMMON) = 0;
     virtual void setSupportDeprecatedTargetDensityDPI(bool) = 0;
     virtual void setSupportsMultipleWindows(bool) = 0;
@@ -159,11 +160,13 @@ public:
     virtual void setTextDirectionSubmenuInclusionBehaviorNeverIncluded() = 0;
     virtual void setThreadedHTMLParser(bool) = 0;
     virtual void setTouchDragDropEnabled(bool) = 0;
+    virtual void setTouchEditingEnabled(bool) = 0;
     virtual void setUnifiedTextCheckerEnabled(bool) = 0;
     virtual void setUnsafePluginPastingEnabled(bool) = 0;
     virtual void setUserStyleSheetLocation(const WebURL&) = 0;
     virtual void setUsesEncodingDetector(bool) = 0;
     virtual void setUsesPageCache(bool) = 0;
+    virtual void setUseWideViewport(bool) = 0;
     virtual void setValidationMessageTimerMagnification(int) = 0;
     virtual void setViewportEnabled(bool) = 0;
     virtual void setVisualWordMovementEnabled(bool) = 0;
@@ -172,9 +175,10 @@ public:
     virtual void setWebSecurityEnabled(bool) = 0;
     virtual void setXSSAuditorEnabled(bool) = 0;
 
-    // TODO(aelias): Delete after Chromium-side calls deleted.
+    // DEPRECATED: Delete after Chromium-side calls deleted.
     void setApplyPageScaleFactorInCompositor(bool enabled) { }
     void setApplyDefaultDeviceScaleFactorInCompositor(bool enabled) { }
+    void setFixedElementsLayoutRelativeToFrame(bool) { }
 
 protected:
     ~WebSettings() { }

@@ -29,37 +29,37 @@
  */
 
 #include "config.h"
-#include "V8Binding.h"
+#include "bindings/v8/V8Binding.h"
 
-#include "BindingVisitors.h"
-#include "DOMStringList.h"
-#include "Element.h"
-#include "Frame.h"
-#include "FrameLoader.h"
-#include "FrameLoaderClient.h"
-#include "QualifiedName.h"
-#include "Settings.h"
 #include "V8DOMStringList.h"
 #include "V8DOMWindow.h"
 #include "V8Element.h"
-#include "V8NodeFilterCondition.h"
-#include "V8ObjectConstructor.h"
 #include "V8WorkerContext.h"
 #include "V8XPathNSResolver.h"
-#include "WebCoreMemoryInstrumentation.h"
-#include "WorkerContext.h"
-#include "WorkerScriptController.h"
-#include "WorldContextHandle.h"
-#include "XPathNSResolver.h"
-#include <wtf/MathExtras.h>
-#include <wtf/MainThread.h>
-#include <wtf/StdLibExtras.h>
-#include <wtf/Threading.h>
-#include <wtf/text/AtomicString.h>
-#include <wtf/text/CString.h>
-#include <wtf/text/StringBuffer.h>
-#include <wtf/text/StringHash.h>
-#include <wtf/text/WTFString.h>
+#include "bindings/v8/ScriptController.h"
+#include "bindings/v8/V8NodeFilterCondition.h"
+#include "bindings/v8/V8ObjectConstructor.h"
+#include "bindings/v8/WorkerScriptController.h"
+#include "core/dom/DOMStringList.h"
+#include "core/dom/Element.h"
+#include "core/dom/QualifiedName.h"
+#include "core/dom/WebCoreMemoryInstrumentation.h"
+#include "core/inspector/BindingVisitors.h"
+#include "core/loader/FrameLoader.h"
+#include "core/loader/FrameLoaderClient.h"
+#include "core/page/Frame.h"
+#include "core/page/Settings.h"
+#include "core/workers/WorkerContext.h"
+#include "core/xml/XPathNSResolver.h"
+#include "wtf/MainThread.h"
+#include "wtf/MathExtras.h"
+#include "wtf/StdLibExtras.h"
+#include "wtf/Threading.h"
+#include "wtf/text/AtomicString.h"
+#include "wtf/text/CString.h"
+#include "wtf/text/StringBuffer.h"
+#include "wtf/text/StringHash.h"
+#include "wtf/text/WTFString.h"
 
 namespace WebCore {
 
@@ -95,6 +95,15 @@ v8::Handle<v8::Value> v8Array(PassRefPtr<DOMStringList> stringList, v8::Isolate*
     v8::Local<v8::Array> result = v8::Array::New(stringList->length());
     for (unsigned i = 0; i < stringList->length(); ++i)
         result->Set(v8Integer(i, isolate), v8String(stringList->item(i), isolate));
+    return result;
+}
+
+Vector<v8::Handle<v8::Value> > toVectorOfArguments(const v8::Arguments& args)
+{
+    Vector<v8::Handle<v8::Value> > result;
+    size_t length = args.Length();
+    for (size_t i = 0; i < length; ++i)
+        result.append(args[i]);
     return result;
 }
 
@@ -330,30 +339,14 @@ Frame* toFrameIfNotDetached(v8::Handle<v8::Context> context)
     return 0;
 }
 
-v8::Local<v8::Context> toV8Context(ScriptExecutionContext* context, const WorldContextHandle& worldContext)
-{
-    if (context->isDocument()) {
-        if (Frame* frame = toDocument(context)->frame())
-            return worldContext.adjustedContext(frame->script());
-    } else if (context->isWorkerContext()) {
-        if (WorkerScriptController* script = static_cast<WorkerContext*>(context)->script())
-            return script->context();
-    }
-    return v8::Local<v8::Context>();
-}
-
 v8::Local<v8::Context> toV8Context(ScriptExecutionContext* context, DOMWrapperWorld* world)
 {
     if (context->isDocument()) {
-        if (Frame* frame = toDocument(context)->frame()) {
-            // FIXME: Store the DOMWrapperWorld for the main world in the v8::Context so callers
-            // that are looking up their world with DOMWrapperWorld::isolatedWorld(v8::Context::GetCurrent())
-            // won't end up passing null here when later trying to get their v8::Context back.
-            if (!world)
-                return frame->script()->mainWorldContext();
-            return v8::Local<v8::Context>::New(frame->script()->windowShell(world)->context());
-        }
+        ASSERT(world);
+        if (Frame* frame = toDocument(context)->frame())
+            return frame->script()->windowShell(world)->context();
     } else if (context->isWorkerContext()) {
+        ASSERT(!world);
         if (WorkerScriptController* script = static_cast<WorkerContext*>(context)->script())
             return script->context();
     }

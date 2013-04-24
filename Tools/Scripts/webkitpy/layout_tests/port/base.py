@@ -84,6 +84,8 @@ class Port(object):
 
     ALL_BUILD_TYPES = ('debug', 'release')
 
+    CONTENT_SHELL_NAME = 'content_shell'
+
     @classmethod
     def determine_full_port_name(cls, host, options, port_name):
         """Return a fully-specified port name that can be used to construct objects."""
@@ -146,6 +148,8 @@ class Port(object):
         self._root_was_set = hasattr(options, 'root') and options.root
 
     def additional_drt_flag(self):
+        if self.driver_name() == self.CONTENT_SHELL_NAME:
+            return ['--dump-render-tree']
         return []
 
     def supports_per_test_timeout(self):
@@ -230,7 +234,7 @@ class Port(object):
         """This routine is used to ensure that the build is up to date
         and all the needed binaries are present."""
         # If we're using a pre-built copy of WebKit (--root), we assume it also includes a build of DRT.
-        if not self._root_was_set and self.get_option('build') and not self._build_driver():
+        if not self._root_was_set and self.get_option('build'):
             return False
         if not self._check_driver():
             return False
@@ -386,6 +390,8 @@ class Port(object):
     def driver_name(self):
         if self.get_option('driver_name'):
             return self.get_option('driver_name')
+        if self.get_option('content_shell'):
+            return self.CONTENT_SHELL_NAME
         return 'DumpRenderTree'
 
     def expected_baselines_by_extension(self, test_name):
@@ -407,7 +413,7 @@ class Port(object):
 
     def baseline_extensions(self):
         """Returns a tuple of all of the non-reftest baseline extensions we use. The extensions include the leading '.'."""
-        return ('.wav', '.webarchive', '.txt', '.png')
+        return ('.wav', '.txt', '.png')
 
     def expected_baselines(self, test_name, suffix, all_baselines=False):
         """Given a test name, finds where the baseline results are located.
@@ -524,9 +530,7 @@ class Port(object):
         # baselines as a binary string, too.
         baseline_path = self.expected_filename(test_name, '.txt')
         if not self._filesystem.exists(baseline_path):
-            baseline_path = self.expected_filename(test_name, '.webarchive')
-            if not self._filesystem.exists(baseline_path):
-                return None
+            return None
         text = self._filesystem.read_binary_file(baseline_path)
         return text.replace("\r\n", "\n")
 
@@ -595,7 +599,7 @@ class Port(object):
         return [self.relative_test_filename(f) for f in files]
 
     # When collecting test cases, we include any file with these extensions.
-    _supported_file_extensions = set(['.html', '.shtml', '.xml', '.xhtml', '.pl',
+    _supported_file_extensions = set(['.html', '.xml', '.xhtml', '.pl',
                                       '.htm', '.php', '.svg', '.mht'])
 
     @staticmethod
@@ -794,22 +798,6 @@ class Port(object):
     @memoized
     def path_to_generic_test_expectations_file(self):
         return self._filesystem.join(self.layout_tests_dir(), 'TestExpectations')
-
-    @memoized
-    def path_to_test_expectations_file(self):
-        """Update the test expectations to the passed-in string.
-
-        This is used by the rebaselining tool. Raises NotImplementedError
-        if the port does not use expectations files."""
-
-        # FIXME: We need to remove this when we make rebaselining work with multiple files and just generalize expectations_files().
-
-        # test_expectations are always in mac/ not mac-leopard/ by convention, hence we use port_name instead of name().
-        port_name = self.port_name
-        if port_name.startswith('chromium'):
-            port_name = 'chromium'
-
-        return self._filesystem.join(self._webkit_baseline_path(port_name), 'TestExpectations')
 
     def relative_test_filename(self, filename):
         """Returns a test_name a relative unix-style path for a filename under the LayoutTests
@@ -1029,9 +1017,8 @@ class Port(object):
         raise NotImplementedError
 
     def uses_test_expectations_file(self):
-        # This is different from checking test_expectations() is None, because
-        # some ports have Skipped files which are returned as part of test_expectations().
-        return self._filesystem.exists(self.path_to_test_expectations_file())
+        # FIXME: Remove this method.
+        return True
 
     def warn_if_bug_missing_in_test_expectations(self):
         return False
@@ -1411,26 +1398,6 @@ class Port(object):
         output = self._executive.run_command(run_script_command, cwd=self.webkit_base(), decode_output=decode_output, env=env)
         _log.debug('Output of %s:\n%s' % (run_script_command, output))
         return output
-
-    def _build_driver(self):
-        environment = self.host.copy_current_environment()
-        environment.disable_gcc_smartquotes()
-        env = environment.to_dictionary()
-
-        # FIXME: We build both DumpRenderTree and WebKitTestRunner for
-        # WebKitTestRunner runs because DumpRenderTree still includes
-        # the DumpRenderTreeSupport module and the TestNetscapePlugin.
-        # These two projects should be factored out into their own
-        # projects.
-        try:
-            self._run_script("build-dumprendertree", args=self._build_driver_flags(), env=env)
-        except ScriptError, e:
-            _log.error(e.message_with_output(output_limit=None))
-            return False
-        return True
-
-    def _build_driver_flags(self):
-        return []
 
     def _tests_for_other_platforms(self):
         # By default we will skip any directory under LayoutTests/platform

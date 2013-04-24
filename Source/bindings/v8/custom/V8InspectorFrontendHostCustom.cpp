@@ -31,14 +31,14 @@
 #include "config.h"
 #include "V8InspectorFrontendHost.h"
 
-#include "HistogramSupport.h"
-#include "InspectorController.h"
-#include "InspectorFrontendClient.h"
-#include "InspectorFrontendHost.h"
-#include <wtf/text/WTFString.h>
+#include "core/inspector/InspectorController.h"
+#include "core/inspector/InspectorFrontendClient.h"
+#include "core/inspector/InspectorFrontendHost.h"
+#include "core/platform/HistogramSupport.h"
+#include "wtf/text/WTFString.h"
 
-#include "V8Binding.h"
 #include "V8MouseEvent.h"
+#include "bindings/v8/V8Binding.h"
 
 namespace WebCore {
 
@@ -123,11 +123,7 @@ v8::Handle<v8::Value> V8InspectorFrontendHost::showContextMenuMethodCustom(const
     populateContextMenuItems(array, menu);
 
     InspectorFrontendHost* frontendHost = V8InspectorFrontendHost::toNative(args.Holder());
-#if !USE(CROSS_PLATFORM_CONTEXT_MENUS)
-    Vector<ContextMenuItem> items = contextMenuItemVector(menu.platformDescription());
-#else
     Vector<ContextMenuItem> items = menu.items();
-#endif
     frontendHost->showContextMenu(event, items);
 
     return v8::Undefined();

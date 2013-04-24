@@ -29,20 +29,20 @@
  */
 
 #include "config.h"
-#include "V8AbstractEventListener.h"
+#include "bindings/v8/V8AbstractEventListener.h"
 
-#include "DateExtension.h"
-#include "Document.h"
-#include "Event.h"
-#include "EventNames.h"
-#include "Frame.h"
-#include "InspectorCounters.h"
-#include "V8Binding.h"
 #include "V8Event.h"
-#include "V8EventListenerList.h"
 #include "V8EventTarget.h"
-#include "V8HiddenPropertyName.h"
-#include "WorkerContext.h"
+#include "bindings/v8/DateExtension.h"
+#include "bindings/v8/V8Binding.h"
+#include "bindings/v8/V8EventListenerList.h"
+#include "bindings/v8/V8HiddenPropertyName.h"
+#include "core/dom/Document.h"
+#include "core/dom/Event.h"
+#include "core/dom/EventNames.h"
+#include "core/inspector/InspectorCounters.h"
+#include "core/page/Frame.h"
+#include "core/workers/WorkerContext.h"
 
 namespace WebCore {
 
@@ -52,10 +52,10 @@ void WeakHandleListener<V8AbstractEventListener>::callback(v8::Isolate*, v8::Per
     listener->m_listener.clear();
 }
 
-V8AbstractEventListener::V8AbstractEventListener(bool isAttribute, const WorldContextHandle& worldContext, v8::Isolate* isolate)
+V8AbstractEventListener::V8AbstractEventListener(bool isAttribute, PassRefPtr<DOMWrapperWorld> world, v8::Isolate* isolate)
     : EventListener(JSEventListenerType)
     , m_isAttribute(isAttribute)
-    , m_worldContext(worldContext)
+    , m_world(world)
     , m_isolate(isolate)
 {
     ThreadLocalInspectorCounters::current().incrementCounter(ThreadLocalInspectorCounters::JSEventListenerCounter);
@@ -84,7 +84,7 @@ void V8AbstractEventListener::handleEvent(ScriptExecutionContext* context, Event
 
     v8::HandleScope handleScope;
 
-    v8::Local<v8::Context> v8Context = toV8Context(context, worldContext());
+    v8::Local<v8::Context> v8Context = toV8Context(context, world());
     if (v8Context.IsEmpty())
         return;
 
@@ -92,10 +92,11 @@ void V8AbstractEventListener::handleEvent(ScriptExecutionContext* context, Event
     v8::Context::Scope scope(v8Context);
 
     // Get the V8 wrapper for the event object.
-    v8::Handle<v8::Value> jsEvent = toV8(event, v8::Handle<v8::Object>(), v8Context->GetIsolate());
+    v8::Isolate* isolate = v8Context->GetIsolate();
+    v8::Handle<v8::Value> jsEvent = toV8(event, v8::Handle<v8::Object>(), isolate);
     if (jsEvent.IsEmpty())
         return;
-    invokeEventHandler(context, event, jsEvent);
+    invokeEventHandler(context, event, v8::Local<v8::Value>::New(isolate, jsEvent));
 }
 
 void V8AbstractEventListener::setListenerObject(v8::Handle<v8::Object> listener)
@@ -104,13 +105,13 @@ void V8AbstractEventListener::setListenerObject(v8::Handle<v8::Object> listener)
     WeakHandleListener<V8AbstractEventListener>::makeWeak(m_isolate, m_listener.get(), this);
 }
 
-void V8AbstractEventListener::invokeEventHandler(ScriptExecutionContext* context, Event* event, v8::Handle<v8::Value> jsEvent)
+void V8AbstractEventListener::invokeEventHandler(ScriptExecutionContext* context, Event* event, v8::Local<v8::Value> jsEvent)
 {
     // If jsEvent is empty, attempt to set it as a hidden value would crash v8.
     if (jsEvent.IsEmpty())
         return;
 
-    v8::Local<v8::Context> v8Context = toV8Context(context, worldContext());
+    v8::Local<v8::Context> v8Context = toV8Context(context, world());
     if (v8Context.IsEmpty())
         return;
 
@@ -182,7 +183,7 @@ v8::Local<v8::Object> V8AbstractEventListener::getReceiverObject(ScriptExecution
         return v8::Local<v8::Object>::New(m_listener.get());
 
     EventTarget* target = event->currentTarget();
-    v8::Handle<v8::Value> value = toV8(target, v8::Handle<v8::Object>(), toV8Context(context, worldContext())->GetIsolate());
+    v8::Handle<v8::Value> value = toV8(target, v8::Handle<v8::Object>(), toV8Context(context, world())->GetIsolate());
     if (value.IsEmpty())
         return v8::Local<v8::Object>();
     return v8::Local<v8::Object>::New(v8::Handle<v8::Object>::Cast(value));

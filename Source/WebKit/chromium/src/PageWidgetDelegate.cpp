@@ -31,6 +31,7 @@
 #include "config.h"
 #include "PageWidgetDelegate.h"
 
+#include "EventHandler.h"
 #include "Frame.h"
 #include "FrameView.h"
 #include "PageOverlayList.h"
@@ -158,7 +159,6 @@ bool PageWidgetDelegate::handleInputEvent(Page* page, PageWidgetEventHandler& ha
     case WebInputEvent::GestureLongTap:
         return handler.handleGestureEvent(*static_cast<const WebGestureEvent*>(&event));
 
-#if ENABLE(TOUCH_EVENTS)
     case WebInputEvent::TouchStart:
     case WebInputEvent::TouchMove:
     case WebInputEvent::TouchEnd:
@@ -166,7 +166,6 @@ bool PageWidgetDelegate::handleInputEvent(Page* page, PageWidgetEventHandler& ha
         if (!frame || !frame->view())
             return false;
         return handler.handleTouchEvent(*frame, *static_cast<const WebTouchEvent*>(&event));
-#endif
 
     case WebInputEvent::GesturePinchBegin:
     case WebInputEvent::GesturePinchEnd:
@@ -212,11 +211,9 @@ bool PageWidgetEventHandler::handleMouseWheel(Frame& mainFrame, const WebMouseWh
     return mainFrame.eventHandler()->handleWheelEvent(PlatformWheelEventBuilder(mainFrame.view(), event));
 }
 
-#if ENABLE(TOUCH_EVENTS)
 bool PageWidgetEventHandler::handleTouchEvent(Frame& mainFrame, const WebTouchEvent& event)
 {
     return mainFrame.eventHandler()->handleTouchEvent(PlatformTouchEventBuilder(mainFrame.view(), event));
 }
-#endif
 
 }

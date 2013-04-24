@@ -31,10 +31,10 @@
 #include "config.h"
 #include "WebPopupMenuImpl.h"
 
+#include <skia/ext/platform_canvas.h>
 #include "Cursor.h"
 #include "FrameView.h"
 #include "FramelessScrollView.h"
-#include "IntRect.h"
 #include "NotImplemented.h"
 #include "PlatformGestureEvent.h"
 #include "PlatformKeyboardEvent.h"
@@ -48,9 +48,9 @@
 #include "WebRange.h"
 #include "WebViewClient.h"
 #include "WebWidgetClient.h"
+#include "core/platform/graphics/IntRect.h"
 #include "painting/GraphicsContextBuilder.h"
 #include <public/WebRect.h>
-#include <skia/ext/platform_canvas.h>
 
 using namespace WebCore;
 
@@ -130,7 +130,6 @@ bool WebPopupMenuImpl::handleGestureEvent(const WebGestureEvent& event)
     return m_widget->handleGestureEvent(PlatformGestureEventBuilder(m_widget, event));
 }
 
-#if ENABLE(TOUCH_EVENTS)
 bool WebPopupMenuImpl::handleTouchEvent(const WebTouchEvent& event)
 {
 
@@ -138,7 +137,6 @@ bool WebPopupMenuImpl::handleTouchEvent(const WebTouchEvent& event)
     bool defaultPrevented(m_widget->handleTouchEvent(touchEventBuilder));
     return defaultPrevented;
 }
-#endif
 
 bool WebPopupMenuImpl::handleKeyEvent(const WebKeyboardEvent& event)
 {

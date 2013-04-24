@@ -42,20 +42,6 @@ using namespace WebCore;
 
 namespace WebKit {
 
-// FIXME: Remove native validation message things when we finish implementations
-// of all platforms.
-static bool nativeValidationMessageEnabled = false;
-
-void WebRuntimeFeatures::enableNativeValidationMessage(bool enable)
-{
-    nativeValidationMessageEnabled = enable;
-}
-
-bool WebRuntimeFeatures::isNativeValidationMessageEnabled()
-{
-    return nativeValidationMessageEnabled;
-}
-
 void WebRuntimeFeatures::enableDatabase(bool enable)
 {
     DatabaseManager::manager().setIsAvailable(enable);
@@ -92,18 +78,12 @@ bool WebRuntimeFeatures::isSessionStorageEnabled()
 
 void WebRuntimeFeatures::enableMediaPlayer(bool enable)
 {
-#if ENABLE(VIDEO)
     WebMediaPlayerClientImpl::setIsEnabled(enable);
-#endif
 }
 
 bool WebRuntimeFeatures::isMediaPlayerEnabled()
 {
-#if ENABLE(VIDEO)
     return WebMediaPlayerClientImpl::isEnabled();
-#else
-    return false;
-#endif
 }
 
 void WebRuntimeFeatures::enableNotifications(bool enable)
@@ -130,20 +110,6 @@ void WebRuntimeFeatures::enableApplicationCache(bool enable)
 bool WebRuntimeFeatures::isApplicationCacheEnabled()
 {
     return RuntimeEnabledFeatures::applicationCacheEnabled();
-}
-
-void WebRuntimeFeatures::enableDataTransferItems(bool enable)
-{
-    // FIXME: This is in the process of being removed.
-}
-
-bool WebRuntimeFeatures::isDataTransferItemsEnabled()
-{
-#if ENABLE(DATA_TRANSFER_ITEMS)
-    return RuntimeEnabledFeatures::dataTransferItemsEnabled();
-#else
-    return false;
-#endif
 }
 
 void WebRuntimeFeatures::enableGeolocation(bool enable)
@@ -184,18 +150,12 @@ bool WebRuntimeFeatures::isWebAudioEnabled()
 
 void WebRuntimeFeatures::enableTouch(bool enable)
 {
-#if ENABLE(TOUCH_EVENTS)
     RuntimeEnabledFeatures::setTouchEnabled(enable);
-#endif
 }
 
 bool WebRuntimeFeatures::isTouchEnabled()
 {
-#if ENABLE(TOUCH_EVENTS)
     return RuntimeEnabledFeatures::touchEnabled();
-#else
-    return false;
-#endif
 }
 
 void WebRuntimeFeatures::enableDeviceMotion(bool enable)
@@ -230,18 +190,12 @@ bool WebRuntimeFeatures::isSpeechInputEnabled()
 
 void WebRuntimeFeatures::enableScriptedSpeech(bool enable)
 {
-#if ENABLE(SCRIPTED_SPEECH)
     RuntimeEnabledFeatures::setScriptedSpeechEnabled(enable);
-#endif
 }
 
 bool WebRuntimeFeatures::isScriptedSpeechEnabled()
 {
-#if ENABLE(SCRIPTED_SPEECH)
     return RuntimeEnabledFeatures::scriptedSpeechEnabled();
-#else
-    return false;
-#endif
 }
 
 void WebRuntimeFeatures::enableXHRResponseBlob(bool enable)
@@ -365,38 +319,22 @@ bool WebRuntimeFeatures::isEncryptedMediaEnabled()
 
 void WebRuntimeFeatures::enableVideoTrack(bool enable)
 {
-#if ENABLE(VIDEO_TRACK)
     RuntimeEnabledFeatures::setWebkitVideoTrackEnabled(enable);
-#else
-    UNUSED_PARAM(enable);
-#endif
 }
 
 bool WebRuntimeFeatures::isVideoTrackEnabled()
 {
-#if ENABLE(VIDEO_TRACK)
     return RuntimeEnabledFeatures::webkitVideoTrackEnabled();
-#else
-    return false;
-#endif
 }
 
 void WebRuntimeFeatures::enableGamepad(bool enable)
 {
-#if ENABLE(GAMEPAD)
     RuntimeEnabledFeatures::setWebkitGetGamepadsEnabled(enable);
-#else
-    UNUSED_PARAM(enable);
-#endif
 }
 
 bool WebRuntimeFeatures::isGamepadEnabled()
 {
-#if ENABLE(GAMEPAD)
     return RuntimeEnabledFeatures::webkitGetGamepadsEnabled();
-#else
-    return false;
-#endif
 }
 
 void WebRuntimeFeatures::enableShadowDOM(bool enable)
@@ -407,6 +345,16 @@ void WebRuntimeFeatures::enableShadowDOM(bool enable)
 bool WebRuntimeFeatures::isShadowDOMEnabled()
 {
     return RuntimeEnabledFeatures::shadowDOMEnabled();
+}
+
+void WebRuntimeFeatures::enableExperimentalShadowDOM(bool enable)
+{
+    RuntimeEnabledFeatures::setExperimentalShadowDOMEnabled(enable);
+}
+
+bool WebRuntimeFeatures::isExperimentalShadowDOMEnabled()
+{
+    return RuntimeEnabledFeatures::experimentalShadowDOMEnabled();
 }
 
 void WebRuntimeFeatures::enableCustomDOMElements(bool enable)
@@ -564,32 +512,54 @@ bool WebRuntimeFeatures::isRequestAutocompleteEnabled()
     return RuntimeEnabledFeatures::requestAutocompleteEnabled();
 }
 
-void WebRuntimeFeatures::enableDoNotTrack(bool enable)
-{
-    RuntimeEnabledFeatures::setDoNotTrackEnabled(enable);
-}
-
-bool WebRuntimeFeatures::isDoNotTrackEnabled()
-{
-    return RuntimeEnabledFeatures::doNotTrackEnabled();
-}
-
 void WebRuntimeFeatures::enableWebPInAcceptHeader(bool enable)
 {
-#if USE(WEBP)
     RuntimeEnabledFeatures::setWebPInAcceptHeaderEnabled(enable);
-#else
-    UNUSED_PARAM(enable);
-#endif
 }
 
 bool WebRuntimeFeatures::isWebPInAcceptHeaderEnabled()
 {
-#if USE(WEBP)
     return RuntimeEnabledFeatures::webPInAcceptHeaderEnabled();
-#else
-    return false;
-#endif
+}
+
+void WebRuntimeFeatures::enableDirectoryUpload(bool enable)
+{
+    RuntimeEnabledFeatures::setDirectoryUploadEnabled(enable);
+}
+
+bool WebRuntimeFeatures::isDirectoryUploadEnabled()
+{
+    return RuntimeEnabledFeatures::directoryUploadEnabled();
+}
+
+void WebRuntimeFeatures::enableExperimentalWebSocket(bool enable)
+{
+    RuntimeEnabledFeatures::setExperimentalWebSocketEnabled(enable);
+}
+
+bool WebRuntimeFeatures::isExperimentalWebSocketEnabled()
+{
+    return RuntimeEnabledFeatures::experimentalWebSocketEnabled();
+}
+
+void WebRuntimeFeatures::enableWebMIDI(bool enable)
+{
+    return RuntimeEnabledFeatures::setWebMIDIEnabled(enable);
+}
+
+bool WebRuntimeFeatures::isWebMIDIEnabled()
+{
+    return RuntimeEnabledFeatures::webMIDIEnabled();
+}
+
+void WebRuntimeFeatures::enableIMEAPI(bool enable)
+{
+    RuntimeEnabledFeatures::setIMEAPIEnabled(enable);
+}
+
+bool WebRuntimeFeatures::isIMEAPIEnabled()
+{
+    return RuntimeEnabledFeatures::imeAPIEnabled();
 }
 
 } // namespace WebKit

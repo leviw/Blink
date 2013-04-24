@@ -27,8 +27,6 @@
 #define WebIDBDatabase_h
 
 #include "../../../Platform/chromium/public/WebCommon.h"
-#include "WebDOMStringList.h"
-#include "WebExceptionCode.h"
 #include "WebIDBMetadata.h"
 
 namespace WebKit {

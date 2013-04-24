@@ -157,7 +157,6 @@ InspectorFrontendHostAPI.prototype.bringToFront = function() {}
 InspectorFrontendHostAPI.prototype.closeWindow = function() {}
 InspectorFrontendHostAPI.prototype.requestSetDockSide = function(dockSide) {}
 InspectorFrontendHostAPI.prototype.setAttachedWindowHeight = function(height) {}
-InspectorFrontendHostAPI.prototype.setAttachedWindowWidth = function(width) {}
 InspectorFrontendHostAPI.prototype.moveWindowBy = function(x, y) {}
 InspectorFrontendHostAPI.prototype.setInjectedScriptForOrigin = function(origin, script) {}
 InspectorFrontendHostAPI.prototype.loaded = function() {}
@@ -191,7 +190,8 @@ function SourceMapV3()
     /** @type {string} */ this.file;
     /** @type {Array.<string>} */ this.sources;
     /** @type {Array.<SourceMapV3.Section>} */ this.sections;
-    /** @type {string} */ this.mappings
+    /** @type {string} */ this.mappings;
+    /** @type {string} */ this.sourceRoot;
 }
 
 /** @constructor */
@@ -348,6 +348,7 @@ CodeMirror.prototype = {
     execCommand: function(cmd) { },
     extendSelection: function(from, to) { },
     findMarksAt: function(pos) { },
+    findMatchingBracket: function() { },
     findPosH: function(from, amount, unit, visually) { },
     findPosV: function(from, amount, unit, goalColumn) { },
     firstLine: function() { },
@@ -359,6 +360,9 @@ CodeMirror.prototype = {
     getHistory: function() { },
     getInputField: function(){ },
     getLine: function(line) { },
+    /**
+     * @return {{wrapClass: string}}
+     */
     getLineHandle: function(line) { },
     getLineNumber: function(line) { },
     getMode: function() { },

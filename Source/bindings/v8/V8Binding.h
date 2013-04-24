@@ -32,28 +32,27 @@
 #ifndef V8Binding_h
 #define V8Binding_h
 
-#include "BindingSecurity.h"
-#include "DOMWrapperWorld.h"
-#include "Document.h"
-#include "NodeFilter.h"
-#include "V8BindingMacros.h"
-#include "V8DOMConfiguration.h"
-#include "V8DOMWrapper.h"
-#include "V8HiddenPropertyName.h"
-#include "V8ObjectConstructor.h"
-#include "V8PerIsolateData.h"
-#include "V8StringResource.h"
-#include "V8ThrowException.h"
-#include "V8ValueCache.h"
-#include <wtf/Noncopyable.h>
-#include <wtf/text/AtomicString.h>
+#include "bindings/v8/BindingSecurity.h"
+#include "bindings/v8/DOMWrapperWorld.h"
+#include "bindings/v8/V8BindingMacros.h"
+#include "bindings/v8/V8DOMConfiguration.h"
+#include "bindings/v8/V8DOMWrapper.h"
+#include "bindings/v8/V8HiddenPropertyName.h"
+#include "bindings/v8/V8ObjectConstructor.h"
+#include "bindings/v8/V8PerIsolateData.h"
+#include "bindings/v8/V8StringResource.h"
+#include "bindings/v8/V8ThrowException.h"
+#include "bindings/v8/V8ValueCache.h"
+#include "core/dom/Document.h"
+#include "core/dom/NodeFilter.h"
+#include "wtf/Noncopyable.h"
+#include "wtf/text/AtomicString.h"
 #include <v8.h>
 
 namespace WebCore {
 
     class DOMStringList;
     class ScriptExecutionContext;
-    class WorldContextHandle;
 
     const int kMaxRecursionDepth = 22;
 
@@ -394,6 +393,8 @@ namespace WebCore {
         return result;
     }
 
+    Vector<v8::Handle<v8::Value> > toVectorOfArguments(const v8::Arguments& args);
+
     // Validates that the passed object is a sequence type per WebIDL spec
     // http://www.w3.org/TR/2012/WD-WebIDL-20120207/#es-sequence
     inline v8::Handle<v8::Value> toV8Sequence(v8::Handle<v8::Value> value, uint32_t& length, v8::Isolate* isolate)
@@ -477,7 +478,6 @@ namespace WebCore {
     ScriptExecutionContext* toScriptExecutionContext(v8::Handle<v8::Context>);
 
     // Returns the context associated with a ScriptExecutionContext.
-    v8::Local<v8::Context> toV8Context(ScriptExecutionContext*, const WorldContextHandle&);
     v8::Local<v8::Context> toV8Context(ScriptExecutionContext*, DOMWrapperWorld*);
 
     // Returns the frame object of the window object associated with

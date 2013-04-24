@@ -25,15 +25,15 @@
 #ifndef MediaElementAudioSourceNode_h
 #define MediaElementAudioSourceNode_h
 
-#if ENABLE(WEB_AUDIO) && ENABLE(VIDEO)
+#if ENABLE(WEB_AUDIO)
 
-#include "AudioSourceNode.h"
-#include "AudioSourceProviderClient.h"
-#include "HTMLMediaElement.h"
-#include "MultiChannelResampler.h"
-#include <wtf/OwnPtr.h>
-#include <wtf/PassRefPtr.h>
-#include <wtf/Threading.h>
+#include "core/html/HTMLMediaElement.h"
+#include "core/platform/audio/AudioSourceProviderClient.h"
+#include "core/platform/audio/MultiChannelResampler.h"
+#include "modules/webaudio/AudioSourceNode.h"
+#include "wtf/OwnPtr.h"
+#include "wtf/PassRefPtr.h"
+#include "wtf/Threading.h"
 
 namespace WebCore {
 
@@ -74,6 +74,6 @@ private:
 
 } // namespace WebCore
 
-#endif // ENABLE(WEB_AUDIO) && ENABLE(VIDEO)
+#endif // ENABLE(WEB_AUDIO)
 
 #endif // MediaElementAudioSourceNode_h

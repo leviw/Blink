@@ -32,8 +32,8 @@
 #include "WebSettingsImpl.h"
 
 #include "DeferredImageDecoder.h"
-#include "FontRenderingMode.h"
 #include "Settings.h"
+#include "core/platform/graphics/FontRenderingMode.h"
 #include <public/WebString.h>
 #include <public/WebURL.h>
 #include <wtf/UnusedParam.h>
@@ -53,6 +53,7 @@ WebSettingsImpl::WebSettingsImpl(Settings* settings)
     , m_renderVSyncNotificationEnabled(false)
     , m_viewportEnabled(false)
     , m_initializeAtMinimumPageScale(true)
+    , m_useWideViewport(true)
     , m_gestureTapHighlightEnabled(true)
     , m_autoZoomFocusedNodeToLegibleScale(false)
     , m_deferredImageDecodingEnabled(false)
@@ -222,6 +223,11 @@ void WebSettingsImpl::setShrinksStandaloneImagesToFit(bool shrinkImages)
     m_settings->setShrinksStandaloneImagesToFit(shrinkImages);
 }
 
+void WebSettingsImpl::setSpatialNavigationEnabled(bool enabled)
+{
+    m_settings->setSpatialNavigationEnabled(enabled);
+}
+
 void WebSettingsImpl::setUsesEncodingDetector(bool usesDetector)
 {
     m_settings->setUsesEncodingDetector(usesDetector);
@@ -257,6 +263,11 @@ void WebSettingsImpl::setUsesPageCache(bool usesPageCache)
     m_settings->setUsesPageCache(usesPageCache);
 }
 
+void WebSettingsImpl::setUseWideViewport(bool useWideViewport)
+{
+    m_useWideViewport = useWideViewport;
+}
+
 void WebSettingsImpl::setPageCacheSupportsPlugins(bool pageCacheSupportsPlugins)
 {
     m_settings->setPageCacheSupportsPlugins(pageCacheSupportsPlugins);
@@ -290,11 +301,6 @@ void WebSettingsImpl::setUnsafePluginPastingEnabled(bool enabled)
 void WebSettingsImpl::setDNSPrefetchingEnabled(bool enabled)
 {
     m_settings->setDNSPrefetchingEnabled(enabled);
-}
-
-void WebSettingsImpl::setFixedElementsLayoutRelativeToFrame(bool fixedElementsLayoutRelativeToFrame)
-{
-    m_settings->setFixedElementsLayoutRelativeToFrame(fixedElementsLayoutRelativeToFrame);
 }
 
 void WebSettingsImpl::setLocalStorageEnabled(bool enabled)
@@ -346,11 +352,14 @@ void WebSettingsImpl::setTouchDragDropEnabled(bool enabled)
     m_settings->setTouchDragDropEnabled(enabled);
 }
 
+void WebSettingsImpl::setTouchEditingEnabled(bool enabled)
+{
+    m_settings->setTouchEditingEnabled(enabled);
+}
+
 void WebSettingsImpl::setThreadedHTMLParser(bool enabled)
 {
-#if ENABLE(THREADED_HTML_PARSER)
     m_settings->setThreadedHTMLParser(enabled);
-#endif
 }
 
 void WebSettingsImpl::setOfflineWebApplicationCacheEnabled(bool enabled)
@@ -557,7 +566,7 @@ void WebSettingsImpl::setValidationMessageTimerMagnification(int newValue)
 
 void WebSettingsImpl::setMinimumTimerInterval(double interval)
 {
-    m_settings->setMinDOMTimerInterval(interval);
+    // FIXME: remove this once the embedder is no longer calling it.
 }
 
 void WebSettingsImpl::setFullScreenEnabled(bool enabled)
@@ -610,6 +619,11 @@ bool WebSettingsImpl::scrollAnimatorEnabled() const
     return m_settings->scrollAnimatorEnabled();
 }
 
+bool WebSettingsImpl::touchEditingEnabled() const
+{
+    return m_settings->touchEditingEnabled();
+}
+
 void WebSettingsImpl::setVisualWordMovementEnabled(bool enabled)
 {
     m_settings->setVisualWordMovementEnabled(enabled);
@@ -617,29 +631,17 @@ void WebSettingsImpl::setVisualWordMovementEnabled(bool enabled)
 
 void WebSettingsImpl::setShouldDisplaySubtitles(bool enabled)
 {
-#if ENABLE(VIDEO_TRACK)
     m_settings->setShouldDisplaySubtitles(enabled);
-#else
-    UNUSED_PARAM(enabled);
-#endif
 }
 
 void WebSettingsImpl::setShouldDisplayCaptions(bool enabled)
 {
-#if ENABLE(VIDEO_TRACK)
     m_settings->setShouldDisplayCaptions(enabled);
-#else
-    UNUSED_PARAM(enabled);
-#endif
 }
 
 void WebSettingsImpl::setShouldDisplayTextDescriptions(bool enabled)
 {
-#if ENABLE(VIDEO_TRACK)
     m_settings->setShouldDisplayTextDescriptions(enabled);
-#else
-    UNUSED_PARAM(enabled);
-#endif
 }
 
 void WebSettingsImpl::setShouldRespectImageOrientation(bool enabled)

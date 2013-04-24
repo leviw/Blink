@@ -29,15 +29,16 @@
  */
 
 #include "config.h"
-#include "V8EventListener.h"
+#include "bindings/v8/V8EventListener.h"
 
-#include "Document.h"
-#include "Frame.h"
+#include "bindings/v8/ScriptController.h"
+#include "core/dom/Document.h"
+#include "core/page/Frame.h"
 
 namespace WebCore {
 
-V8EventListener::V8EventListener(v8::Local<v8::Object> listener, bool isAttribute, const WorldContextHandle& worldContext)
-    : V8AbstractEventListener(isAttribute, worldContext, v8::Isolate::GetCurrent()) // FIXME: Remove GetCurrent().
+V8EventListener::V8EventListener(v8::Local<v8::Object> listener, bool isAttribute)
+    : V8AbstractEventListener(isAttribute, DOMWrapperWorld::current(), v8::Isolate::GetCurrent()) // FIXME: Remove GetCurrent().
 {
     setListenerObject(listener);
 }

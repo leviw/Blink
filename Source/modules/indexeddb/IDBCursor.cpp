@@ -24,19 +24,19 @@
  */
 
 #include "config.h"
-#include "IDBCursor.h"
+#include "modules/indexeddb/IDBCursor.h"
 
-#include "IDBAny.h"
-#include "IDBBindingUtilities.h"
-#include "IDBCallbacks.h"
-#include "IDBCursorBackendInterface.h"
-#include "IDBKey.h"
-#include "IDBObjectStore.h"
-#include "IDBRequest.h"
-#include "IDBTracing.h"
-#include "IDBTransaction.h"
-#include "ScriptCallStack.h"
-#include "ScriptExecutionContext.h"
+#include "bindings/v8/IDBBindingUtilities.h"
+#include "core/dom/ScriptExecutionContext.h"
+#include "core/inspector/ScriptCallStack.h"
+#include "modules/indexeddb/IDBAny.h"
+#include "modules/indexeddb/IDBCallbacks.h"
+#include "modules/indexeddb/IDBCursorBackendInterface.h"
+#include "modules/indexeddb/IDBKey.h"
+#include "modules/indexeddb/IDBObjectStore.h"
+#include "modules/indexeddb/IDBRequest.h"
+#include "modules/indexeddb/IDBTracing.h"
+#include "modules/indexeddb/IDBTransaction.h"
 #include <limits>
 
 namespace WebCore {
@@ -124,7 +124,7 @@ PassRefPtr<IDBRequest> IDBCursor::update(ScriptState* state, ScriptValue& value,
 {
     IDB_TRACE("IDBCursor::update");
 
-    if (!m_gotValue || isKeyCursor()) {
+    if (!m_gotValue || isKeyCursor() || isDeleted()) {
         ec = IDBDatabaseException::InvalidStateError;
         return 0;
     }
@@ -155,7 +155,7 @@ void IDBCursor::advance(unsigned long count, ExceptionCode& ec)
 {
     ec = 0;
     IDB_TRACE("IDBCursor::advance");
-    if (!m_gotValue) {
+    if (!m_gotValue || isDeleted()) {
         ec = IDBDatabaseException::InvalidStateError;
         return;
     }
@@ -172,14 +172,13 @@ void IDBCursor::advance(unsigned long count, ExceptionCode& ec)
 
     m_request->setPendingCursor(this);
     m_gotValue = false;
-    m_backend->advance(count, m_request, ec);
-    ASSERT(!ec);
+    m_backend->advance(count, m_request);
 }
 
 void IDBCursor::continueFunction(ScriptExecutionContext* context, const ScriptValue& keyValue, ExceptionCode& ec)
 {
     DOMRequestState requestState(context);
-    RefPtr<IDBKey> key = scriptValueToIDBKey(&requestState, keyValue);
+    RefPtr<IDBKey> key = keyValue.isUndefined() ? 0 : scriptValueToIDBKey(&requestState, keyValue);
     continueFunction(key.release(), ec);
 }
 
@@ -197,7 +196,7 @@ void IDBCursor::continueFunction(PassRefPtr<IDBKey> key, ExceptionCode& ec)
         return;
     }
 
-    if (!m_gotValue) {
+    if (!m_gotValue || isDeleted()) {
         ec = IDBDatabaseException::InvalidStateError;
         return;
     }
@@ -221,8 +220,7 @@ void IDBCursor::continueFunction(PassRefPtr<IDBKey> key, ExceptionCode& ec)
     //        will be on the original context openCursor was called on. Is this right?
     m_request->setPendingCursor(this);
     m_gotValue = false;
-    m_backend->continueFunction(key, m_request, ec);
-    ASSERT(!ec);
+    m_backend->continueFunction(key, m_request);
 }
 
 PassRefPtr<IDBRequest> IDBCursor::deleteFunction(ScriptExecutionContext* context, ExceptionCode& ec)
@@ -238,13 +236,12 @@ PassRefPtr<IDBRequest> IDBCursor::deleteFunction(ScriptExecutionContext* context
         return 0;
     }
 
-    if (!m_gotValue || isKeyCursor()) {
+    if (!m_gotValue || isKeyCursor() || isDeleted()) {
         ec = IDBDatabaseException::InvalidStateError;
         return 0;
     }
     RefPtr<IDBRequest> request = IDBRequest::create(context, IDBAny::create(this), m_transaction.get());
-    m_backend->deleteFunction(request, ec);
-    ASSERT(!ec);
+    m_backend->deleteFunction(request);
     return request.release();
 }
 
@@ -296,9 +293,16 @@ PassRefPtr<IDBObjectStore> IDBCursor::effectiveObjectStore()
     return index->objectStore();
 }
 
+bool IDBCursor::isDeleted() const
+{
+    if (m_source->type() == IDBAny::IDBObjectStoreType)
+        return m_source->idbObjectStore()->isDeleted();
+    return m_source->idbIndex()->isDeleted();
+}
+
 IndexedDB::CursorDirection IDBCursor::stringToDirection(const String& directionString, ExceptionCode& ec)
 {
-    if (directionString == IDBCursor::directionNext())
+    if (directionString.isNull() || directionString == IDBCursor::directionNext())
         return IndexedDB::CursorNext;
     if (directionString == IDBCursor::directionNextUnique())
         return IndexedDB::CursorNextNoDuplicate;

@@ -26,14 +26,12 @@
 #include "config.h"
 #include "WebIDBCallbacksImpl.h"
 
-#include "DOMStringList.h"
 #include "IDBCallbacks.h"
 #include "IDBCursorBackendProxy.h"
 #include "IDBDatabaseBackendProxy.h"
 #include "IDBDatabaseError.h"
 #include "IDBKey.h"
 #include "IDBMetadata.h"
-#include "WebDOMStringList.h"
 #include "WebIDBCallbacks.h"
 #include "WebIDBDatabase.h"
 #include "WebIDBDatabaseError.h"
@@ -58,9 +56,12 @@ void WebIDBCallbacksImpl::onError(const WebIDBDatabaseError& error)
     m_callbacks->onError(error);
 }
 
-void WebIDBCallbacksImpl::onSuccess(const WebDOMStringList& domStringList)
+void WebIDBCallbacksImpl::onSuccess(const WebVector<WebString>& webStringList)
 {
-    m_callbacks->onSuccess(domStringList);
+    Vector<String> stringList;
+    for (size_t i = 0; i < webStringList.size(); ++i)
+        stringList.append(webStringList[i]);
+    m_callbacks->onSuccess(stringList);
 }
 
 void WebIDBCallbacksImpl::onSuccess(WebIDBCursor* cursor, const WebIDBKey& key, const WebIDBKey& primaryKey, const WebData& value)

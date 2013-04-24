@@ -55,7 +55,7 @@ public:
     {
         m_wasErrorCalled = true;
     }
-    virtual void onSuccess(PassRefPtr<DOMStringList>) { }
+    virtual void onSuccess(const Vector<String>&) { }
     virtual void onSuccess(PassRefPtr<IDBCursorBackendInterface>, PassRefPtr<IDBKey>, PassRefPtr<IDBKey>, PassRefPtr<SharedBuffer>) { }
     virtual void onSuccess(PassRefPtr<IDBDatabaseBackendInterface>, const IDBDatabaseMetadata&)
     {
@@ -97,7 +97,7 @@ public:
     virtual void removeIDBDatabaseBackend(const WTF::String &) { }
 
 protected:
-    virtual PassRefPtr<IDBBackingStore> openBackingStore(PassRefPtr<SecurityOrigin> prpOrigin, const String& dataDir)
+    virtual PassRefPtr<IDBBackingStore> openBackingStore(const String&, const String& dataDir)
     {
         return FailingBackingStore::open();
     }

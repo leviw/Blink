@@ -29,14 +29,15 @@
  */
 
 #include "config.h"
-#include "ThreadableWebSocketChannelClientWrapper.h"
+#include "modules/websockets/ThreadableWebSocketChannelClientWrapper.h"
 
-#include "CrossThreadCopier.h"
-#include "CrossThreadTask.h"
-#include "ScriptExecutionContext.h"
-#include "WebSocketChannelClient.h"
-#include <wtf/PassRefPtr.h>
-#include <wtf/RefPtr.h>
+#include "core/dom/CrossThreadTask.h"
+#include "core/dom/ScriptExecutionContext.h"
+#include "core/platform/CrossThreadCopier.h"
+#include "modules/websockets/WebSocketChannel.h"
+#include "modules/websockets/WebSocketChannelClient.h"
+#include "wtf/PassRefPtr.h"
+#include "wtf/RefPtr.h"
 
 namespace WebCore {
 
@@ -46,7 +47,7 @@ ThreadableWebSocketChannelClientWrapper::ThreadableWebSocketChannelClientWrapper
     , m_peer(0)
     , m_failedWebSocketChannelCreation(false)
     , m_syncMethodDone(true)
-    , m_sendRequestResult(ThreadableWebSocketChannel::SendFail)
+    , m_sendRequestResult(WebSocketChannel::SendFail)
     , m_bufferedAmount(0)
     , m_suspended(false)
 {
@@ -128,12 +129,12 @@ void ThreadableWebSocketChannelClientWrapper::setExtensions(const String& extens
         memcpy(m_extensions.data(), extensions.characters(), sizeof(UChar) * length);
 }
 
-ThreadableWebSocketChannel::SendResult ThreadableWebSocketChannelClientWrapper::sendRequestResult() const
+WebSocketChannel::SendResult ThreadableWebSocketChannelClientWrapper::sendRequestResult() const
 {
     return m_sendRequestResult;
 }
 
-void ThreadableWebSocketChannelClientWrapper::setSendRequestResult(ThreadableWebSocketChannel::SendResult sendRequestResult)
+void ThreadableWebSocketChannelClientWrapper::setSendRequestResult(WebSocketChannel::SendResult sendRequestResult)
 {
     m_sendRequestResult = sendRequestResult;
     m_syncMethodDone = true;

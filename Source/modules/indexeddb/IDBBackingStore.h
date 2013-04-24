@@ -26,13 +26,13 @@
 #ifndef IDBBackingStore_h
 #define IDBBackingStore_h
 
-#include "IDBKey.h"
-#include "IDBMetadata.h"
-#include "IndexedDB.h"
-#include "LevelDBTransaction.h"
-#include <wtf/OwnPtr.h>
-#include <wtf/RefCounted.h>
-#include <wtf/WeakPtr.h>
+#include "core/platform/leveldb/LevelDBTransaction.h"
+#include "modules/indexeddb/IDBKey.h"
+#include "modules/indexeddb/IDBMetadata.h"
+#include "modules/indexeddb/IndexedDB.h"
+#include "wtf/OwnPtr.h"
+#include "wtf/RefCounted.h"
+#include "wtf/WeakPtr.h"
 
 namespace WebCore {
 
@@ -41,7 +41,6 @@ class LevelDBDatabase;
 class LevelDBTransaction;
 class IDBKey;
 class IDBKeyRange;
-class SecurityOrigin;
 class SharedBuffer;
 
 class LevelDBFactory {
@@ -55,10 +54,10 @@ public:
     class Transaction;
 
     virtual ~IDBBackingStore();
-    static PassRefPtr<IDBBackingStore> open(SecurityOrigin*, const String& pathBase, const String& fileIdentifier);
-    static PassRefPtr<IDBBackingStore> open(SecurityOrigin*, const String& pathBase, const String& fileIdentifier, LevelDBFactory*);
-    static PassRefPtr<IDBBackingStore> openInMemory(SecurityOrigin*, const String& identifier);
-    static PassRefPtr<IDBBackingStore> openInMemory(SecurityOrigin*, const String& identifier, LevelDBFactory*);
+    static PassRefPtr<IDBBackingStore> open(const String& databaseIdentifier, const String& pathBase, const String& fileIdentifier);
+    static PassRefPtr<IDBBackingStore> open(const String& databaseIdentifier, const String& pathBase, const String& fileIdentifier, LevelDBFactory*);
+    static PassRefPtr<IDBBackingStore> openInMemory(const String& identifier);
+    static PassRefPtr<IDBBackingStore> openInMemory(const String& identifier, LevelDBFactory*);
     WeakPtr<IDBBackingStore> createWeakPtr() { return m_weakFactory.createWeakPtr(); }
 
     virtual Vector<String> getDatabaseNames();

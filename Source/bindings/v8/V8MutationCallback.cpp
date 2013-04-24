@@ -24,14 +24,14 @@
  */
 
 #include "config.h"
-#include "V8MutationCallback.h"
+#include "bindings/v8/V8MutationCallback.h"
 
-#include "ScriptController.h"
-#include "ScriptExecutionContext.h"
-#include "V8Binding.h"
 #include "V8MutationObserver.h"
 #include "V8MutationRecord.h"
-#include <wtf/Assertions.h>
+#include "bindings/v8/ScriptController.h"
+#include "bindings/v8/V8Binding.h"
+#include "core/dom/ScriptExecutionContext.h"
+#include "wtf/Assertions.h"
 
 namespace WebCore {
 
@@ -44,7 +44,7 @@ void WeakHandleListener<V8MutationCallback>::callback(v8::Isolate*, v8::Persiste
 V8MutationCallback::V8MutationCallback(v8::Handle<v8::Function> callback, ScriptExecutionContext* context, v8::Handle<v8::Object> owner, v8::Isolate* isolate)
     : ActiveDOMCallback(context)
     , m_callback(callback)
-    , m_world(DOMWrapperWorld::isolatedWorld(v8::Context::GetCurrent()))
+    , m_world(DOMWrapperWorld::current())
 {
     owner->SetHiddenValue(V8HiddenPropertyName::callback(), callback);
     WeakHandleListener<V8MutationCallback>::makeWeak(isolate, m_callback.get(), this);

@@ -26,17 +26,16 @@
 
 #if ENABLE(WEB_AUDIO)
 
-#include "AudioBufferSourceNode.h"
+#include "modules/webaudio/AudioBufferSourceNode.h"
 
-#include "AudioContext.h"
-#include "AudioNodeOutput.h"
-#include "AudioUtilities.h"
-#include "FloatConversion.h"
-#include "ScriptCallStack.h"
-#include "ScriptExecutionContext.h"
+#include "core/page/PageConsole.h"
+#include "core/platform/FloatConversion.h"
+#include "core/platform/audio/AudioUtilities.h"
+#include "modules/webaudio/AudioContext.h"
+#include "modules/webaudio/AudioNodeOutput.h"
 #include <algorithm>
-#include <wtf/MainThread.h>
-#include <wtf/MathExtras.h>
+#include "wtf/MainThread.h"
+#include "wtf/MathExtras.h"
 
 using namespace std;
 
@@ -455,22 +454,14 @@ double AudioBufferSourceNode::totalPitchRate()
 
 bool AudioBufferSourceNode::looping()
 {
-    static bool firstTime = true;
-    if (firstTime && context() && context()->scriptExecutionContext()) {
-        context()->scriptExecutionContext()->addConsoleMessage(JSMessageSource, WarningMessageLevel, "AudioBufferSourceNode 'looping' attribute is deprecated.  Use 'loop' instead.");
-        firstTime = false;
-    }
+    PageConsole::reportDeprecation(context()->scriptExecutionContext(), PageConsole::WebAudioLooping);
 
     return m_isLooping;
 }
 
 void AudioBufferSourceNode::setLooping(bool looping)
 {
-    static bool firstTime = true;
-    if (firstTime && context() && context()->scriptExecutionContext()) {
-        context()->scriptExecutionContext()->addConsoleMessage(JSMessageSource, WarningMessageLevel, "AudioBufferSourceNode 'looping' attribute is deprecated.  Use 'loop' instead.");
-        firstTime = false;
-    }
+    PageConsole::reportDeprecation(context()->scriptExecutionContext(), PageConsole::WebAudioLooping);
 
     m_isLooping = looping;
 }

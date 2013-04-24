@@ -36,6 +36,7 @@
 #include "DOMWindowPagePopup.h"
 #include "DocumentLoader.h"
 #include "EmptyClients.h"
+#include "EventHandler.h"
 #include "FocusController.h"
 #include "FrameView.h"
 #include "Page.h"
@@ -138,12 +139,10 @@ private:
             m_popup->m_webView->client()->didChangeCursor(WebCursorInfo(cursor));
     }
 
-#if ENABLE(TOUCH_EVENTS)
     virtual void needTouchEvents(bool needsTouchEvents) OVERRIDE
     {
         m_popup->widgetClient()->hasTouchEventHandlers(needsTouchEvents);
     }
-#endif // ENABLE(TOUCH_EVENTS)
 
     // PageClientChromium methods:
     virtual WebKit::WebScreenInfo screenInfo() OVERRIDE
@@ -330,7 +329,7 @@ void WebPagePopupImpl::close()
 void WebPagePopupImpl::closePopup()
 {
     if (m_page) {
-        m_page->setGroupName(String());
+        m_page->clearPageGroup();
         m_page->mainFrame()->loader()->stopAllLoaders();
         m_page->mainFrame()->loader()->stopLoading(UnloadEventPolicyNone);
         DOMWindowPagePopup::uninstall(m_page->mainFrame()->document()->domWindow());

@@ -229,7 +229,7 @@ TEST_F(ScrollingCoordinatorChromiumTest, overflowScrolling)
     WebLayer* webScrollLayer = static_cast<WebLayer*>(layerBacking->scrollingContentsLayer()->platformLayer());
     ASSERT_TRUE(webScrollLayer->scrollable());
 
-#if !OS(DARWIN) && !OS(WINDOWS)
+#if OS(ANDROID)
     // Now verify we've attached impl-side scrollbars onto the scrollbar layers
     ASSERT_TRUE(layerBacking->layerForHorizontalScrollbar());
     ASSERT_TRUE(layerBacking->layerForHorizontalScrollbar()->hasContentsLayer());
@@ -272,7 +272,7 @@ TEST_F(ScrollingCoordinatorChromiumTest, iframeScrolling)
     WebLayer* webScrollLayer = static_cast<WebLayer*>(scrollLayer->platformLayer());
     ASSERT_TRUE(webScrollLayer->scrollable());
 
-#if !OS(DARWIN) && !OS(WINDOWS)
+#if OS(ANDROID)
     // Now verify we've attached impl-side scrollbars onto the scrollbar layers
     ASSERT_TRUE(innerCompositor->layerForHorizontalScrollbar());
     ASSERT_TRUE(innerCompositor->layerForHorizontalScrollbar()->hasContentsLayer());
@@ -315,8 +315,9 @@ TEST_F(ScrollingCoordinatorChromiumTest, rtlIframe)
     WebLayer* webScrollLayer = static_cast<WebLayer*>(scrollLayer->platformLayer());
     ASSERT_TRUE(webScrollLayer->scrollable());
 
-    ASSERT_EQ(973, webScrollLayer->scrollPosition().x);
-    ASSERT_EQ(973, webScrollLayer->maxScrollPosition().width);
+    int expectedScrollPosition = 958 + (innerFrameView->verticalScrollbar()->isOverlayScrollbar() ? 0 : 15);
+    ASSERT_EQ(expectedScrollPosition, webScrollLayer->scrollPosition().x);
+    ASSERT_EQ(expectedScrollPosition, webScrollLayer->maxScrollPosition().width);
 }
 
 TEST_F(ScrollingCoordinatorChromiumTest, setupScrollbarLayerShouldNotCrash)

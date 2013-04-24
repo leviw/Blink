@@ -25,9 +25,7 @@
 
 #include "config.h"
 
-#if ENABLE(SCRIPTED_SPEECH)
-
-#include "SpeechRecognitionEvent.h"
+#include "modules/speech/SpeechRecognitionEvent.h"
 
 namespace WebCore {
 
@@ -94,5 +92,3 @@ SpeechRecognitionEvent::~SpeechRecognitionEvent()
 }
 
 } // namespace WebCore
-
-#endif // ENABLE(SCRIPTED_SPEECH)

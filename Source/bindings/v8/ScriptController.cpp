@@ -30,55 +30,55 @@
  */
 
 #include "config.h"
-#include "ScriptController.h"
+#include "bindings/v8/ScriptController.h"
 
-#include "BindingState.h"
-#include "ContentSecurityPolicy.h"
-#include "DOMWindow.h"
-#include "Document.h"
-#include "DocumentLoader.h"
-#include "Event.h"
-#include "EventListener.h"
-#include "EventNames.h"
-#include "Frame.h"
-#include "FrameLoader.h"
-#include "FrameLoaderClient.h"
-#include "HistogramSupport.h"
-#include "InspectorInstrumentation.h"
-#include "NPObjectWrapper.h"
-#include "NPV8Object.h"
-#include "Node.h"
-#include "NotImplemented.h"
-#include "Page.h"
-#include "PluginViewBase.h"
-#include "ScriptCallStack.h"
-#include "ScriptCallStackFactory.h"
 #include "ScriptRunner.h"
-#include "ScriptSourceCode.h"
-#include "ScriptValue.h"
-#include "ScriptableDocumentParser.h"
-#include "SecurityOrigin.h"
-#include "Settings.h"
-#include "TraceEvent.h"
-#include "UserGestureIndicator.h"
-#include "V8Binding.h"
 #include "V8DOMWindow.h"
 #include "V8Event.h"
-#include "V8GCController.h"
-#include "V8HiddenPropertyName.h"
 #include "V8HTMLEmbedElement.h"
-#include "V8NPObject.h"
-#include "V8PerContextData.h"
-#include "V8RecursionScope.h"
-#include "Widget.h"
-#include "npruntime_impl.h"
-#include "npruntime_priv.h"
-#include <wtf/CurrentTime.h>
-#include <wtf/StdLibExtras.h>
-#include <wtf/StringExtras.h>
-#include <wtf/text/CString.h>
-#include <wtf/text/StringBuilder.h>
-#include <wtf/text/TextPosition.h>
+#include "bindings/v8/BindingState.h"
+#include "bindings/v8/NPObjectWrapper.h"
+#include "bindings/v8/NPV8Object.h"
+#include "bindings/v8/ScriptCallStackFactory.h"
+#include "bindings/v8/ScriptSourceCode.h"
+#include "bindings/v8/ScriptValue.h"
+#include "bindings/v8/V8Binding.h"
+#include "bindings/v8/V8GCController.h"
+#include "bindings/v8/V8HiddenPropertyName.h"
+#include "bindings/v8/V8NPObject.h"
+#include "bindings/v8/V8PerContextData.h"
+#include "bindings/v8/V8RecursionScope.h"
+#include "bindings/v8/npruntime_impl.h"
+#include "bindings/v8/npruntime_priv.h"
+#include "core/dom/Document.h"
+#include "core/dom/Event.h"
+#include "core/dom/EventListener.h"
+#include "core/dom/EventNames.h"
+#include "core/dom/Node.h"
+#include "core/dom/ScriptableDocumentParser.h"
+#include "core/dom/UserGestureIndicator.h"
+#include "core/inspector/InspectorInstrumentation.h"
+#include "core/inspector/ScriptCallStack.h"
+#include "core/loader/DocumentLoader.h"
+#include "core/loader/FrameLoader.h"
+#include "core/loader/FrameLoaderClient.h"
+#include "core/page/ContentSecurityPolicy.h"
+#include "core/page/DOMWindow.h"
+#include "core/page/Frame.h"
+#include "core/page/Page.h"
+#include "core/page/SecurityOrigin.h"
+#include "core/page/Settings.h"
+#include "core/platform/HistogramSupport.h"
+#include "core/platform/NotImplemented.h"
+#include "core/platform/Widget.h"
+#include "core/platform/chromium/TraceEvent.h"
+#include "core/plugins/PluginViewBase.h"
+#include "wtf/CurrentTime.h"
+#include "wtf/StdLibExtras.h"
+#include "wtf/StringExtras.h"
+#include "wtf/text/CString.h"
+#include "wtf/text/StringBuilder.h"
+#include "wtf/text/TextPosition.h"
 
 
 namespace WebCore {
@@ -91,11 +91,6 @@ void ScriptController::initializeThreading()
         WTF::initializeMainThread();
         initializedThreading = true;
     }
-}
-
-void ScriptController::setFlags(const char* string, int length)
-{
-    v8::V8::SetFlagsFromString(string, length);
 }
 
 bool ScriptController::canAccessFromCurrentOrigin(Frame *frame)
@@ -168,11 +163,6 @@ void ScriptController::clearForClose()
 void ScriptController::updateSecurityOrigin()
 {
     m_windowShell->updateSecurityOrigin();
-}
-
-void ScriptController::updatePlatformScriptObjects()
-{
-    notImplemented();
 }
 
 bool ScriptController::processingUserGesture()
@@ -374,7 +364,7 @@ void ScriptController::evaluateInIsolatedWorld(int worldID, const Vector<ScriptS
         if (!isolatedWorldShell->isContextInitialized())
             return;
 
-        v8::Local<v8::Context> context = v8::Local<v8::Context>::New(isolatedWorldShell->context());
+        v8::Local<v8::Context> context = isolatedWorldShell->context();
         v8::Context::Scope contextScope(context);
         v8::Local<v8::Array> resultArray = v8::Array::New(sources.size());
 
@@ -409,13 +399,9 @@ TextPosition ScriptController::eventHandlerPosition() const
     return TextPosition::minimumPosition();
 }
 
-void ScriptController::finishedWithEvent(Event* event)
-{
-}
-
 static inline v8::Local<v8::Context> contextForWorld(ScriptController* scriptController, DOMWrapperWorld* world)
 {
-    return v8::Local<v8::Context>::New(scriptController->windowShell(world)->context());
+    return scriptController->windowShell(world)->context();
 }
 
 v8::Local<v8::Context> ScriptController::currentWorldContext()
@@ -469,11 +455,6 @@ void ScriptController::bindToWindowObject(Frame* frame, const String& key, NPObj
     global->Set(v8String(key, v8Context->GetIsolate()), value);
 }
 
-bool ScriptController::haveInterpreter() const
-{
-    return m_windowShell->isContextInitialized();
-}
-
 void ScriptController::enableEval()
 {
     if (!m_windowShell->isContextInitialized())
@@ -487,7 +468,7 @@ void ScriptController::disableEval(const String& errorMessage)
     if (!m_windowShell->isContextInitialized())
         return;
     v8::HandleScope handleScope;
-    v8::Handle<v8::Context> v8Context = m_windowShell->context();
+    v8::Local<v8::Context> v8Context = m_windowShell->context();
     v8Context->AllowCodeGenerationFromStrings(false);
     v8Context->SetErrorMessageForCodeGenerationFromStrings(v8String(errorMessage, v8Context->GetIsolate()));
 }
@@ -544,18 +525,6 @@ void ScriptController::cleanupScriptObjectsForPlugin(Widget* nativeHandle)
     _NPN_UnregisterObject(it->value);
     _NPN_ReleaseObject(it->value);
     m_pluginObjects.remove(it);
-}
-
-void ScriptController::evaluateInWorld(const ScriptSourceCode& source,
-                                       DOMWrapperWorld* world)
-{
-    if (world == mainThreadNormalWorld()) {
-        evaluate(source);
-        return;
-    }
-    Vector<ScriptSourceCode> sources;
-    sources.append(source);
-    evaluateInIsolatedWorld(world->worldId(), sources, world->extensionGroup(), 0);
 }
 
 V8Extensions& ScriptController::registeredExtensions()
@@ -638,7 +607,7 @@ NPObject* ScriptController::createScriptObjectForPluginElement(HTMLPlugInElement
 }
 
 
-void ScriptController::clearWindowShell(DOMWindow*, bool)
+void ScriptController::clearWindowShell()
 {
     double start = currentTime();
     // V8 binding expects ScriptController::clearWindowShell only be called
@@ -663,10 +632,10 @@ void ScriptController::collectIsolatedContexts(Vector<std::pair<ScriptState*, Se
         SecurityOrigin* origin = isolatedWorldShell->world()->isolatedWorldSecurityOrigin();
         if (!origin)
             continue;
-        v8::Handle<v8::Context> v8Context = isolatedWorldShell->context();
+        v8::Local<v8::Context> v8Context = isolatedWorldShell->context();
         if (v8Context.IsEmpty())
             continue;
-        ScriptState* scriptState = ScriptState::forContext(v8::Local<v8::Context>::New(v8Context));
+        ScriptState* scriptState = ScriptState::forContext(v8Context);
         result.append(std::pair<ScriptState*, SecurityOrigin*>(scriptState, origin));
     }
 }
@@ -677,7 +646,7 @@ bool ScriptController::setContextDebugId(int debugId)
     if (!m_windowShell->isContextInitialized())
         return false;
     v8::HandleScope scope;
-    v8::Handle<v8::Context> context = m_windowShell->context();
+    v8::Local<v8::Context> context = m_windowShell->context();
     return V8PerContextDebugData::setContextDebugData(context, "page", debugId);
 }
 

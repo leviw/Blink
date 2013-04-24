@@ -149,10 +149,10 @@ class RebaselineTest(AbstractRebaseliningCommand):
         # FIXME: We should rework the code to not need this; maybe just download
         # the files in parallel and rebaseline local files serially?
         try:
-            path = port.path_to_test_expectations_file()
+            path = port.path_to_generic_test_expectations_file()
             lock = self._tool.make_file_lock(path + '.lock')
             lock.acquire_lock()
-            expectations = TestExpectations(port, include_generic=False, include_overrides=False)
+            expectations = TestExpectations(port, include_overrides=False)
             for test_configuration in port.all_test_configurations():
                 if test_configuration.version == port.test_configuration().version:
                     expectationsString = expectations.remove_configuration_from_test(test_name, test_configuration)
@@ -455,17 +455,9 @@ class Rebaseline(AbstractParallelRebaselineCommand):
 
     def _builders_to_pull_from(self):
         chromium_buildbot_builder_names = []
-        webkit_buildbot_builder_names = []
         for name in builders.all_builder_names():
-            if self._tool.port_factory.get_from_builder_name(name).is_chromium():
-                chromium_buildbot_builder_names.append(name)
-            else:
-                webkit_buildbot_builder_names.append(name)
-
-        titles = ["build.webkit.org bots", "build.chromium.org bots"]
-        lists = [webkit_buildbot_builder_names, chromium_buildbot_builder_names]
-
-        chosen_names = self._tool.user.prompt_with_multiple_lists("Which builder to pull results from:", titles, lists, can_choose_multiple=True)
+            chromium_buildbot_builder_names.append(name)
+        chosen_names = self._tool.user.prompt_with_list("Which builder to pull results from:", chromium_buildbot_builder_names, can_choose_multiple=True)
         return [self._builder_with_name(name) for name in chosen_names]
 
     def _builder_with_name(self, name):

@@ -29,30 +29,30 @@
  */
 
 #include "config.h"
-#include "V8LazyEventListener.h"
+#include "bindings/v8/V8LazyEventListener.h"
 
-#include "ContentSecurityPolicy.h"
-#include "Document.h"
-#include "Frame.h"
-#include "HTMLElement.h"
-#include "HTMLFormElement.h"
-#include "Node.h"
-#include "ScriptSourceCode.h"
-#include "V8Binding.h"
-#include "V8DOMWrapper.h"
 #include "V8Document.h"
 #include "V8HTMLFormElement.h"
-#include "V8HiddenPropertyName.h"
 #include "V8Node.h"
-#include "V8RecursionScope.h"
-#include "WorldContextHandle.h"
+#include "bindings/v8/ScriptController.h"
+#include "bindings/v8/ScriptSourceCode.h"
+#include "bindings/v8/V8Binding.h"
+#include "bindings/v8/V8DOMWrapper.h"
+#include "bindings/v8/V8HiddenPropertyName.h"
+#include "bindings/v8/V8RecursionScope.h"
+#include "core/dom/Document.h"
+#include "core/dom/Node.h"
+#include "core/html/HTMLElement.h"
+#include "core/html/HTMLFormElement.h"
+#include "core/page/ContentSecurityPolicy.h"
+#include "core/page/Frame.h"
 
-#include <wtf/StdLibExtras.h>
+#include "wtf/StdLibExtras.h"
 
 namespace WebCore {
 
-V8LazyEventListener::V8LazyEventListener(const AtomicString& functionName, const AtomicString& eventParameterName, const String& code, const String sourceURL, const TextPosition& position, Node* node, const WorldContextHandle& worldContext)
-    : V8AbstractEventListener(true, worldContext, v8::Isolate::GetCurrent()) // FIXME Remove GetCurrent()
+V8LazyEventListener::V8LazyEventListener(const AtomicString& functionName, const AtomicString& eventParameterName, const String& code, const String sourceURL, const TextPosition& position, Node* node)
+    : V8AbstractEventListener(true, mainThreadNormalWorld(), v8::Isolate::GetCurrent()) // FIXME Remove GetCurrent()
     , m_functionName(functionName)
     , m_eventParameterName(eventParameterName)
     , m_code(code)
@@ -127,7 +127,7 @@ void V8LazyEventListener::prepareListenerObject(ScriptExecutionContext* context)
     v8::HandleScope handleScope;
 
     // Use the outer scope to hold context.
-    v8::Local<v8::Context> v8Context = toV8Context(context, worldContext());
+    v8::Local<v8::Context> v8Context = toV8Context(context, world());
     v8::Isolate* isolate = v8Context->GetIsolate();
     // Bail out if we cannot get the context.
     if (v8Context.IsEmpty())

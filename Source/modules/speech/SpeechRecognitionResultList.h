@@ -26,11 +26,9 @@
 #ifndef SpeechRecognitionResultList_h
 #define SpeechRecognitionResultList_h
 
-#if ENABLE(SCRIPTED_SPEECH)
-
-#include "SpeechRecognitionResult.h"
-#include <wtf/RefCounted.h>
-#include <wtf/Vector.h>
+#include "modules/speech/SpeechRecognitionResult.h"
+#include "wtf/RefCounted.h"
+#include "wtf/Vector.h"
 
 namespace WebCore {
 
@@ -48,7 +46,5 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // ENABLE(SCRIPTED_SPEECH)
 
 #endif // SpeechRecognitionResultList_h

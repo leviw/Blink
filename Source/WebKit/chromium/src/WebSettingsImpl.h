@@ -46,6 +46,7 @@ public:
 
     virtual bool deviceSupportsTouch();
     virtual bool scrollAnimatorEnabled() const;
+    virtual bool touchEditingEnabled() const;
     virtual bool viewportEnabled() const { return m_viewportEnabled; }
     virtual void setAccelerated2dCanvasEnabled(bool);
     virtual void setAcceleratedCompositingEnabled(bool);
@@ -94,7 +95,6 @@ public:
     virtual void setExperimentalCSSVariablesEnabled(bool);
     virtual void setExperimentalWebGLEnabled(bool);
     virtual void setFantasyFontFamily(const WebString&, UScriptCode = USCRIPT_COMMON);
-    virtual void setFixedElementsLayoutRelativeToFrame(bool);
     virtual void setFixedFontFamily(const WebString&, UScriptCode = USCRIPT_COMMON);
     virtual void setFixedPositionCreatesStackingContext(bool);
     virtual void setFontRenderingModeNormal();
@@ -145,6 +145,7 @@ public:
     virtual void setShowPaintRects(bool);
     virtual void setShrinksStandaloneImagesToFit(bool);
     virtual void setSmartInsertDeleteEnabled(bool);
+    virtual void setSpatialNavigationEnabled(bool);
     virtual void setStandardFontFamily(const WebString&, UScriptCode = USCRIPT_COMMON);
     virtual void setSupportDeprecatedTargetDensityDPI(bool);
     virtual void setSupportsMultipleWindows(bool);
@@ -154,12 +155,14 @@ public:
     virtual void setTextAutosizingFontScaleFactor(float);
     virtual void setTextDirectionSubmenuInclusionBehaviorNeverIncluded();
     virtual void setTouchDragDropEnabled(bool);
+    virtual void setTouchEditingEnabled(bool);
     virtual void setThreadedHTMLParser(bool);
     virtual void setUnifiedTextCheckerEnabled(bool);
     virtual void setUnsafePluginPastingEnabled(bool);
     virtual void setUserStyleSheetLocation(const WebURL&);
     virtual void setUsesEncodingDetector(bool);
     virtual void setUsesPageCache(bool);
+    virtual void setUseWideViewport(bool);
     virtual void setValidationMessageTimerMagnification(int);
     virtual void setViewportEnabled(bool);
     virtual void setVisualWordMovementEnabled(bool);
@@ -177,6 +180,7 @@ public:
     bool doubleTapToZoomEnabled() const { return m_doubleTapToZoomEnabled; }
     bool perTilePaintingEnabled() const { return m_perTilePaintingEnabled; }
     bool supportDeprecatedTargetDensityDPI() const { return m_supportDeprecatedTargetDensityDPI; }
+    bool useWideViewport() const { return m_useWideViewport; }
 
 private:
     WebCore::Settings* m_settings;
@@ -185,6 +189,7 @@ private:
     bool m_renderVSyncNotificationEnabled;
     bool m_viewportEnabled;
     bool m_initializeAtMinimumPageScale;
+    bool m_useWideViewport;
     bool m_gestureTapHighlightEnabled;
     bool m_autoZoomFocusedNodeToLegibleScale;
     bool m_deferredImageDecodingEnabled;

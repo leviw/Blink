@@ -26,9 +26,7 @@
 #ifndef NavigatorGamepad_h
 #define NavigatorGamepad_h
 
-#if ENABLE(GAMEPAD)
-
-#include "Supplementable.h"
+#include "core/platform/Supplementable.h"
 
 namespace WebCore {
 
@@ -52,7 +50,5 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // ENABLE(GAMEPAD)
 
 #endif // NavigatorGamepad_h

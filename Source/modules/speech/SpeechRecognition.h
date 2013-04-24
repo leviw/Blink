@@ -26,15 +26,13 @@
 #ifndef SpeechRecognition_h
 #define SpeechRecognition_h
 
-#if ENABLE(SCRIPTED_SPEECH)
-
-#include "ActiveDOMObject.h"
-#include "EventTarget.h"
-#include "SpeechGrammarList.h"
-#include <wtf/Compiler.h>
-#include <wtf/PassRefPtr.h>
-#include <wtf/RefCounted.h>
-#include <wtf/text/WTFString.h>
+#include "core/dom/ActiveDOMObject.h"
+#include "core/dom/EventTarget.h"
+#include "modules/speech/SpeechGrammarList.h"
+#include "wtf/Compiler.h"
+#include "wtf/PassRefPtr.h"
+#include "wtf/RefCounted.h"
+#include "wtf/text/WTFString.h"
 
 namespace WebCore {
 
@@ -129,7 +127,5 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // ENABLE(SCRIPTED_SPEECH)
 
 #endif // SpeechRecognition_h

@@ -31,11 +31,11 @@
 #ifndef V8LazyEventListener_h
 #define V8LazyEventListener_h
 
-#include "V8AbstractEventListener.h"
+#include "bindings/v8/V8AbstractEventListener.h"
 #include <v8.h>
-#include <wtf/text/TextPosition.h>
-#include <wtf/PassRefPtr.h>
-#include <wtf/text/WTFString.h>
+#include "wtf/PassRefPtr.h"
+#include "wtf/text/TextPosition.h"
+#include "wtf/text/WTFString.h"
 
 namespace WebCore {
 
@@ -48,9 +48,9 @@ namespace WebCore {
     // A V8LazyEventListener is either a HTML or SVG event handler.
     class V8LazyEventListener : public V8AbstractEventListener {
     public:
-        static PassRefPtr<V8LazyEventListener> create(const AtomicString& functionName, const AtomicString& eventParameterName, const String& code, const String& sourceURL, const TextPosition& position, Node* node, const WorldContextHandle& worldContext)
+        static PassRefPtr<V8LazyEventListener> create(const AtomicString& functionName, const AtomicString& eventParameterName, const String& code, const String& sourceURL, const TextPosition& position, Node* node)
         {
-            return adoptRef(new V8LazyEventListener(functionName, eventParameterName, code, sourceURL, position, node, worldContext));
+            return adoptRef(new V8LazyEventListener(functionName, eventParameterName, code, sourceURL, position, node));
         }
 
         virtual bool isLazy() const { return true; }
@@ -59,7 +59,7 @@ namespace WebCore {
         virtual void prepareListenerObject(ScriptExecutionContext*);
 
     private:
-        V8LazyEventListener(const AtomicString& functionName, const AtomicString& eventParameterName, const String& code, const String sourceURL, const TextPosition&, Node*, const WorldContextHandle&);
+        V8LazyEventListener(const AtomicString& functionName, const AtomicString& eventParameterName, const String& code, const String sourceURL, const TextPosition&, Node*);
 
         virtual v8::Local<v8::Value> callListenerFunction(ScriptExecutionContext*, v8::Handle<v8::Value> jsEvent, Event*);
 

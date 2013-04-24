@@ -27,26 +27,25 @@
  */
 
 #include "config.h"
-#include "SQLTransactionBackend.h"
+#include "modules/webdatabase/SQLTransactionBackend.h"
 
-#include "AbstractSQLTransaction.h"
-#include "Database.h" // FIXME: Should only be used in the frontend.
-#include "DatabaseAuthorizer.h"
-#include "DatabaseBackend.h"
-#include "DatabaseBackendContext.h"
-#include "DatabaseThread.h"
-#include "DatabaseTracker.h"
-#include "ExceptionCode.h"
-#include "Logging.h"
-#include "OriginLock.h"
-#include "SQLError.h"
-#include "SQLStatementBackend.h"
-#include "SQLTransactionClient.h"
-#include "SQLTransactionCoordinator.h"
-#include "SQLValue.h"
-#include "SQLiteTransaction.h"
-#include <wtf/StdLibExtras.h>
-#include <wtf/text/WTFString.h>
+#include "core/dom/ExceptionCode.h"
+#include "core/platform/Logging.h"
+#include "core/platform/sql/SQLValue.h"
+#include "core/platform/sql/SQLiteTransaction.h"
+#include "modules/webdatabase/AbstractSQLTransaction.h"
+#include "modules/webdatabase/Database.h" // FIXME: Should only be used in the frontend.
+#include "modules/webdatabase/DatabaseAuthorizer.h"
+#include "modules/webdatabase/DatabaseBackend.h"
+#include "modules/webdatabase/DatabaseBackendContext.h"
+#include "modules/webdatabase/DatabaseThread.h"
+#include "modules/webdatabase/DatabaseTracker.h"
+#include "modules/webdatabase/SQLError.h"
+#include "modules/webdatabase/SQLStatementBackend.h"
+#include "modules/webdatabase/SQLTransactionClient.h"
+#include "modules/webdatabase/SQLTransactionCoordinator.h"
+#include "wtf/StdLibExtras.h"
+#include "wtf/text/WTFString.h"
 
 
 // How does a SQLTransaction work?
@@ -386,8 +385,6 @@ void SQLTransactionBackend::doCleanup()
 
     ASSERT(currentThread() == database()->databaseContext()->databaseThread()->getThreadID());
 
-    releaseOriginLockIfNeeded();
-
     MutexLocker locker(m_statementMutex);
     m_statementQueue.clear();
 
@@ -573,10 +570,8 @@ SQLTransactionState SQLTransactionBackend::openTransactionAndPreflight()
     }
 
     // Set the maximum usage for this transaction if this transactions is not read-only
-    if (!m_readOnly) {
-        acquireOriginLock();
+    if (!m_readOnly)
         m_database->sqliteDatabase().setMaximumSize(m_database->maximumSize());
-    }
 
     ASSERT(!m_sqliteTransaction);
     m_sqliteTransaction = adoptPtr(new SQLiteTransaction(m_database->sqliteDatabase(), m_readOnly));
@@ -745,8 +740,6 @@ SQLTransactionState SQLTransactionBackend::postflightAndCommit()
     m_sqliteTransaction->commit();
     m_database->enableAuthorizer();
 
-    releaseOriginLockIfNeeded();
-
     // If the commit failed, the transaction will still be marked as "in progress"
     if (m_sqliteTransaction->inProgress()) {
         if (m_wrapper)
@@ -811,8 +804,6 @@ SQLTransactionState SQLTransactionBackend::cleanupAfterTransactionErrorCallback(
     }
     m_database->enableAuthorizer();
 
-    releaseOriginLockIfNeeded();
-
     ASSERT(!m_database->sqliteDatabase().transactionInProgress());
 
     return SQLTransactionState::CleanupAndTerminate;
@@ -843,14 +834,6 @@ SQLTransactionState SQLTransactionBackend::sendToFrontendState()
     ASSERT(m_nextState != SQLTransactionState::Idle);
     m_frontend->requestTransitToState(m_nextState);
     return SQLTransactionState::Idle;
-}
-
-void SQLTransactionBackend::acquireOriginLock()
-{
-}
-
-void SQLTransactionBackend::releaseOriginLockIfNeeded()
-{
 }
 
 } // namespace WebCore

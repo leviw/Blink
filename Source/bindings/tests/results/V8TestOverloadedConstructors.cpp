@@ -26,6 +26,7 @@
 #include "ExceptionCode.h"
 #include "Frame.h"
 #include "RuntimeEnabledFeatures.h"
+#include "ScriptController.h"
 #include "V8ArrayBuffer.h"
 #include "V8ArrayBufferView.h"
 #include "V8Binding.h"
@@ -69,6 +70,22 @@ inline void checkTypeOrDieTrying(TestOverloadedConstructors* object)
 }
 #endif // ENABLE(BINDING_INTEGRITY)
 
+#if defined(OS_WIN)
+// In ScriptWrappable, the use of extern function prototypes inside templated static methods has an issue on windows.
+// These prototypes do not pick up the surrounding namespace, so drop out of WebCore as a workaround.
+} // namespace WebCore
+using WebCore::ScriptWrappable;
+using WebCore::V8TestOverloadedConstructors;
+using WebCore::TestOverloadedConstructors;
+#endif
+void initializeScriptWrappableForInterface(TestOverloadedConstructors* object)
+{
+    if (ScriptWrappable::wrapperCanBeStoredInObject(object))
+        ScriptWrappable::setTypeInfoInObject(object, &V8TestOverloadedConstructors::info);
+}
+#if defined(OS_WIN)
+namespace WebCore {
+#endif
 WrapperTypeInfo V8TestOverloadedConstructors::info = { V8TestOverloadedConstructors::GetTemplate, V8TestOverloadedConstructors::derefObject, 0, 0, 0, V8TestOverloadedConstructors::installPerContextPrototypeProperties, 0, WrapperTypeObjectPrototype };
 
 namespace TestOverloadedConstructorsV8Internal {
@@ -157,7 +174,7 @@ static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestOverloadedConstructor
         0, 0, isolate, currentWorldType);
     UNUSED_PARAM(defaultSignature); // In some cases, it will not be used.
     desc->SetCallHandler(V8TestOverloadedConstructors::constructorCallback);
-    
+    desc->SetLength(1);
 
     // Custom toString template
     desc->Set(v8::String::NewSymbol("toString"), V8PerIsolateData::current()->toStringTemplate());

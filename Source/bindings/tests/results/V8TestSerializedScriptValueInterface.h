@@ -44,7 +44,6 @@ public:
     }
     static void derefObject(void*);
     static WrapperTypeInfo info;
-    static v8::Handle<v8::Value> constructorCallback(const v8::Arguments&);
     static const int internalFieldCount = v8DefaultWrapperInternalFieldCount + 0;
     static void installPerContextProperties(v8::Handle<v8::Object>, TestSerializedScriptValueInterface*, v8::Isolate*) { }
     static void installPerContextPrototypeProperties(v8::Handle<v8::Object>, v8::Isolate*) { }
@@ -64,6 +63,10 @@ inline v8::Handle<v8::Object> wrap(TestSerializedScriptValueInterface* impl, v8:
 {
     ASSERT(impl);
     ASSERT(DOMDataStore::getWrapper(impl, isolate).IsEmpty());
+    if (ScriptWrappable::wrapperCanBeStoredInObject(impl)) {
+        const WrapperTypeInfo* actualInfo = ScriptWrappable::getTypeInfoFromObject(impl);
+        RELEASE_ASSERT(actualInfo == &V8TestSerializedScriptValueInterface::info);
+    }
     return V8TestSerializedScriptValueInterface::createWrapper(impl, creationContext, isolate);
 }
 

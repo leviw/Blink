@@ -111,6 +111,24 @@ sub AddToImplIncludes
     }
 }
 
+sub AddToHeader
+{
+    my $code = shift;
+    push(@headerContent, $code);
+}
+
+sub AddToImplContentInternals
+{
+    my $code = shift;
+    push(@implContentInternals, $code);
+}
+
+sub AddToImplContent
+{
+    my $code = shift;
+    push(@implContent, $code);
+}
+
 sub AddIncludesForType
 {
     my $type = shift;
@@ -184,7 +202,7 @@ sub GenerateOpaqueRootForGC
         return;
     }
 
-    push(@implContent, <<END);
+    my $code = <<END;
 void* V8${interfaceName}::opaqueRootForGC(void* object, v8::Persistent<v8::Object> wrapper, v8::Isolate* isolate)
 {
     ASSERT(!wrapper.IsIndependent(isolate));
@@ -203,17 +221,18 @@ END
         $methodName = "owner" if (GetGenerateIsReachable($interface) eq "ImplOwnerRoot");
         $methodName = "ownerNode" if (GetGenerateIsReachable($interface) eq "ImplOwnerNodeRoot");
 
-        push(@implContent, <<END);
+        $code .= <<END;
     if (Node* owner = impl->${methodName}())
         return V8GCController::opaqueRootForGC(owner, isolate);
 END
     }
 
-    push(@implContent, <<END);
+    $code .= <<END;
     return object;
 }
 
 END
+    AddToImplContent($code);
 }
 
 sub GetSVGPropertyTypes
@@ -281,7 +300,7 @@ sub GenerateHeader
     }
 
     # - Add default header template
-    push(@headerContent, GenerateHeaderContentHeader($interface));
+    AddToHeader(GenerateHeaderContentHeader($interface));
 
     $headerIncludes{"wtf/text/StringHash.h"} = 1;
     $headerIncludes{"WrapperTypeInfo.h"} = 1;
@@ -297,29 +316,29 @@ sub GenerateHeader
 
     foreach my $headerInclude (sort keys(%headerIncludes)) {
         if ($headerInclude =~ /wtf|v8\.h/) {
-            push(@headerContent, "#include \<${headerInclude}\>\n");
+            AddToHeader("#include \<${headerInclude}\>\n");
         } else {
-            push(@headerContent, "#include \"${headerInclude}\"\n");
+            AddToHeader("#include \"${headerInclude}\"\n");
         }
     }
 
-    push(@headerContent, "\nnamespace WebCore {\n");
-    push(@headerContent, "\ntemplate<typename PropertyType> class SVGPropertyTearOff;\n") if $svgPropertyType;
+    AddToHeader("\nnamespace WebCore {\n");
+    AddToHeader("\ntemplate<typename PropertyType> class SVGPropertyTearOff;\n") if $svgPropertyType;
     if ($svgNativeType) {
         if ($svgNativeType =~ /SVGStaticListPropertyTearOff/) {
-            push(@headerContent, "\ntemplate<typename PropertyType> class SVGStaticListPropertyTearOff;\n");
+            AddToHeader("\ntemplate<typename PropertyType> class SVGStaticListPropertyTearOff;\n");
         } else {
-            push(@headerContent, "\ntemplate<typename PropertyType> class SVGListPropertyTearOff;\n");
+            AddToHeader("\ntemplate<typename PropertyType> class SVGListPropertyTearOff;\n");
         }
     }
 
-    push(@headerContent, "\n");
-    push(@headerContent, "class FloatRect;\n") if $svgPropertyType && $svgPropertyType eq "FloatRect";
-    push(@headerContent, "class Dictionary;\n") if $codeGenerator->IsConstructorTemplate($interface, "Event");
+    AddToHeader("\n");
+    AddToHeader("class FloatRect;\n") if $svgPropertyType && $svgPropertyType eq "FloatRect";
+    AddToHeader("class Dictionary;\n") if $codeGenerator->IsConstructorTemplate($interface, "Event");
 
     my $nativeType = GetNativeTypeForConversions($interface);
     if ($interface->extendedAttributes->{"NamedConstructor"}) {
-        push(@headerContent, <<END);
+        AddToHeader(<<END);
 class V8${nativeType}Constructor {
 public:
     static v8::Persistent<v8::FunctionTemplate> GetTemplate(v8::Isolate*, WrapperWorldType);
@@ -329,12 +348,12 @@ public:
 END
     }
 
-    push(@headerContent, "class $v8InterfaceName {\n");
-    push(@headerContent, "public:\n");
+    AddToHeader("class $v8InterfaceName {\n");
+    AddToHeader("public:\n");
 
-    push(@headerContent, "    static const bool hasDependentLifetime = ");
+    AddToHeader("    static const bool hasDependentLifetime = ");
     if ($hasDependentLifetime) {
-        push(@headerContent, "true;\n");
+        AddToHeader("true;\n");
     } elsif (@{$interface->parents}) {
         # Even if this type doesn't have the [DependentLifetime] attribute its parents may.
         # Let the compiler statically determine this for us.
@@ -342,12 +361,12 @@ END
         foreach (@{$interface->parents}) {
             my $parent = $_;
             $headerIncludes{"V8${parent}.h"} = 1;
-            push(@headerContent, "${separator}V8${parent}::hasDependentLifetime");
+            AddToHeader("${separator}V8${parent}::hasDependentLifetime");
             $separator = " || ";
         }
-        push(@headerContent, ";\n");
+        AddToHeader(";\n");
     } else {
-        push(@headerContent, "false;\n");
+        AddToHeader("false;\n");
     }
 
     my $fromFunctionOpening = "";
@@ -357,7 +376,7 @@ END
         $fromFunctionClosing = ")";
     }
 
-    push(@headerContent, <<END);
+    AddToHeader(<<END);
     static bool HasInstance(v8::Handle<v8::Value>, v8::Isolate*, WrapperWorldType);
     static bool HasInstanceInAnyWorld(v8::Handle<v8::Value>, v8::Isolate*);
     static v8::Persistent<v8::FunctionTemplate> GetTemplate(v8::Isolate*, WrapperWorldType);
@@ -370,25 +389,25 @@ END
 END
 
     if (NeedsCustomOpaqueRootForGC($interface)) {
-        push(@headerContent, "    static void* opaqueRootForGC(void*, v8::Persistent<v8::Object>, v8::Isolate*);\n");
+        AddToHeader("    static void* opaqueRootForGC(void*, v8::Persistent<v8::Object>, v8::Isolate*);\n");
     }
 
     if ($codeGenerator->InheritsExtendedAttribute($interface, "ActiveDOMObject")) {
-        push(@headerContent, "    static ActiveDOMObject* toActiveDOMObject(v8::Handle<v8::Object>);\n");
+        AddToHeader("    static ActiveDOMObject* toActiveDOMObject(v8::Handle<v8::Object>);\n");
     }
 
     if ($codeGenerator->InheritsExtendedAttribute($interface, "EventTarget")) {
-        push(@headerContent, "    static EventTarget* toEventTarget(v8::Handle<v8::Object>);\n");
+        AddToHeader("    static EventTarget* toEventTarget(v8::Handle<v8::Object>);\n");
     }
 
     if ($interfaceName eq "DOMWindow") {
-        push(@headerContent, <<END);
+        AddToHeader(<<END);
     static v8::Persistent<v8::ObjectTemplate> GetShadowObjectTemplate(v8::Isolate*, WrapperWorldType);
 END
     }
 
     if ($interfaceName eq "HTMLDocument") {
-      push(@headerContent, <<END);
+      AddToHeader(<<END);
     static v8::Local<v8::Object> wrapInShadowObject(v8::Local<v8::Object> wrapper, Node* impl, v8::Isolate*);
 END
     }
@@ -400,11 +419,11 @@ END
 
         if (HasCustomMethod($attrExt) && !$attrExt->{"ImplementedBy"} && $function->{overloadIndex} == 1) {
             my $conditionalString = $codeGenerator->GenerateConditionalString($function->signature);
-            push(@headerContent, "#if ${conditionalString}\n") if $conditionalString;
-            push(@headerContent, <<END);
+            AddToHeader("#if ${conditionalString}\n") if $conditionalString;
+            AddToHeader(<<END);
     static v8::Handle<v8::Value> ${name}MethodCustom(const v8::Arguments&);
 END
-            push(@headerContent, "#endif // ${conditionalString}\n") if $conditionalString;
+            AddToHeader("#endif // ${conditionalString}\n") if $conditionalString;
         }
         if ($attrExt->{"EnabledPerContext"}) {
             push(@enabledPerContextFunctions, $function);
@@ -412,11 +431,11 @@ END
     }
 
     if (IsConstructable($interface)) {
-        push(@headerContent, "    static v8::Handle<v8::Value> constructorCallback(const v8::Arguments&);\n");
+        AddToHeader("    static v8::Handle<v8::Value> constructorCallback(const v8::Arguments&);\n");
 END
     }
     if (HasCustomConstructor($interface)) {
-        push(@headerContent, "    static v8::Handle<v8::Value> constructorCustom(const v8::Arguments&);\n");
+        AddToHeader("    static v8::Handle<v8::Value> constructorCustom(const v8::Arguments&);\n");
     }
 
     my @enabledPerContextAttributes;
@@ -425,18 +444,18 @@ END
         my $attrExt = $attribute->signature->extendedAttributes;
         my $conditionalString = $codeGenerator->GenerateConditionalString($attribute->signature);
         if (HasCustomGetter($attrExt) && !$attrExt->{"ImplementedBy"}) {
-            push(@headerContent, "#if ${conditionalString}\n") if $conditionalString;
-            push(@headerContent, <<END);
+            AddToHeader("#if ${conditionalString}\n") if $conditionalString;
+            AddToHeader(<<END);
     static v8::Handle<v8::Value> ${name}AttrGetterCustom(v8::Local<v8::String> name, const v8::AccessorInfo&);
 END
-            push(@headerContent, "#endif // ${conditionalString}\n") if $conditionalString;
+            AddToHeader("#endif // ${conditionalString}\n") if $conditionalString;
         }
         if (HasCustomSetter($attrExt) && !$attrExt->{"ImplementedBy"}) {
-            push(@headerContent, "#if ${conditionalString}\n") if $conditionalString;
-            push(@headerContent, <<END);
+            AddToHeader("#if ${conditionalString}\n") if $conditionalString;
+            AddToHeader(<<END);
     static void ${name}AttrSetterCustom(v8::Local<v8::String> name, v8::Local<v8::Value>, const v8::AccessorInfo&);
 END
-            push(@headerContent, "#endif // ${conditionalString}\n") if $conditionalString;
+            AddToHeader("#endif // ${conditionalString}\n") if $conditionalString;
         }
         if ($attrExt->{"EnabledPerContext"}) {
             push(@enabledPerContextAttributes, $attribute);
@@ -448,55 +467,55 @@ END
     GenerateHeaderCustomInternalFieldIndices($interface);
 
     if ($interface->name eq "DOMWindow") {
-        push(@headerContent, <<END);
+        AddToHeader(<<END);
     static bool namedSecurityCheckCustom(v8::Local<v8::Object> host, v8::Local<v8::Value> key, v8::AccessType, v8::Local<v8::Value> data);
     static bool indexedSecurityCheckCustom(v8::Local<v8::Object> host, uint32_t index, v8::AccessType, v8::Local<v8::Value> data);
 END
     }
 
     if (@enabledPerContextAttributes) {
-        push(@headerContent, <<END);
+        AddToHeader(<<END);
     static void installPerContextProperties(v8::Handle<v8::Object>, ${nativeType}*, v8::Isolate*);
 END
     } else {
-        push(@headerContent, <<END);
+        AddToHeader(<<END);
     static void installPerContextProperties(v8::Handle<v8::Object>, ${nativeType}*, v8::Isolate*) { }
 END
     }
 
     if (@enabledPerContextFunctions) {
-        push(@headerContent, <<END);
+        AddToHeader(<<END);
     static void installPerContextPrototypeProperties(v8::Handle<v8::Object>, v8::Isolate*);
 END
     } else {
-        push(@headerContent, <<END);
+        AddToHeader(<<END);
     static void installPerContextPrototypeProperties(v8::Handle<v8::Object>, v8::Isolate*) { }
 END
     }
 
     if ($interfaceName eq "HTMLElement") {
-        push(@headerContent, <<END);
+        AddToHeader(<<END);
     friend v8::Handle<v8::Object> createV8HTMLWrapper(HTMLElement*, v8::Handle<v8::Object> creationContext, v8::Isolate*);
     friend v8::Handle<v8::Object> createV8HTMLDirectWrapper(HTMLElement*, v8::Handle<v8::Object> creationContext, v8::Isolate*);
 END
     } elsif ($interfaceName eq "SVGElement") {
-        push(@headerContent, <<END);
+        AddToHeader(<<END);
     friend v8::Handle<v8::Object> createV8SVGWrapper(SVGElement*, v8::Handle<v8::Object> creationContext, v8::Isolate*);
     friend v8::Handle<v8::Object> createV8SVGDirectWrapper(SVGElement*, v8::Handle<v8::Object> creationContext, v8::Isolate*);
     friend v8::Handle<v8::Object> createV8SVGFallbackWrapper(SVGElement*, v8::Handle<v8::Object> creationContext, v8::Isolate*);
 END
     } elsif ($interfaceName eq "HTMLUnknownElement") {
-        push(@headerContent, <<END);
+        AddToHeader(<<END);
     friend v8::Handle<v8::Object> createV8HTMLFallbackWrapper(HTMLUnknownElement*, v8::Handle<v8::Object> creationContext, v8::Isolate*);
 END
     } elsif ($interfaceName eq "Element") {
-        push(@headerContent, <<END);
+        AddToHeader(<<END);
     // This is a performance optimization hack. See V8Element::wrap.
     friend v8::Handle<v8::Object> wrap(Node*, v8::Handle<v8::Object> creationContext, v8::Isolate*);
 END
     }
 
-        push(@headerContent, <<END);
+        AddToHeader(<<END);
 private:
 END
 
@@ -504,13 +523,13 @@ END
     my $noWrap = $interface->extendedAttributes->{"NoWrapperCache"} || $noToV8;
     if (!$noWrap) {
         my $createWrapperArgumentType = GetPassRefPtrType($nativeType);
-        push(@headerContent, <<END);
+        AddToHeader(<<END);
     friend v8::Handle<v8::Object> wrap(${nativeType}*, v8::Handle<v8::Object> creationContext, v8::Isolate*);
     static v8::Handle<v8::Object> createWrapper(${createWrapperArgumentType}, v8::Handle<v8::Object> creationContext, v8::Isolate*);
 END
     }
 
-    push(@headerContent, <<END);
+    AddToHeader(<<END);
 };
 
 template<>
@@ -526,7 +545,7 @@ END
         die "Can't suppress toV8 for subclass\n" if @parents;
     } elsif ($noWrap) {
         die "Must have custom toV8\n" if !$customWrap;
-        push(@headerContent, <<END);
+        AddToHeader(<<END);
 class ${nativeType};
 v8::Handle<v8::Value> toV8(${nativeType}*, v8::Handle<v8::Object> creationContext, v8::Isolate*);
 v8::Handle<v8::Value> toV8ForMainWorld(${nativeType}*, v8::Handle<v8::Object> creationContext, v8::Isolate*);
@@ -551,12 +570,12 @@ END
         my $returningCreatedWrapperClosing = $interface->extendedAttributes->{"WrapAsFunction"} ? ", \"${interfaceName}\", isolate)" : "";
 
         if ($customWrap) {
-            push(@headerContent, <<END);
+            AddToHeader(<<END);
 
 v8::Handle<v8::Object> wrap(${nativeType}* impl, v8::Handle<v8::Object> creationContext, v8::Isolate*);
 END
         } else {
-            push(@headerContent, <<END);
+            AddToHeader(<<END);
 
 inline v8::Handle<v8::Object> wrap(${nativeType}* impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
 {
@@ -567,7 +586,7 @@ inline v8::Handle<v8::Object> wrap(${nativeType}* impl, v8::Handle<v8::Object> c
 END
         }
 
-        push(@headerContent, <<END);
+        AddToHeader(<<END);
 
 inline v8::Handle<v8::Value> toV8(${nativeType}* impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
 {
@@ -622,7 +641,7 @@ inline v8::Handle<v8::Value> toV8FastForMainWorld(PassRefPtr< ${nativeType} > im
 END
     }
 
-    push(@headerContent, <<END);
+    AddToHeader(<<END);
 
 template<class HolderContainer, class Wrappable>
 inline v8::Handle<v8::Value> toV8Fast(PassRefPtr< ${nativeType} > impl, const HolderContainer& container, Wrappable* wrappable)
@@ -637,14 +656,14 @@ inline v8::Handle<v8::Value> toV8(PassRefPtr< ${nativeType} > impl, v8::Handle<v
 END
 
     if ($codeGenerator->IsConstructorTemplate($interface, "Event")) {
-        push(@headerContent, "\nbool fill${interfaceName}Init(${interfaceName}Init&, const Dictionary&);\n");
+        AddToHeader("\nbool fill${interfaceName}Init(${interfaceName}Init&, const Dictionary&);\n");
     }
 
-    push(@headerContent, "\n}\n\n");
-    push(@headerContent, "#endif // $v8InterfaceName" . "_h\n");
+    AddToHeader("\n}\n\n");
+    AddToHeader("#endif // $v8InterfaceName" . "_h\n");
 
     my $conditionalString = $codeGenerator->GenerateConditionalString($interface);
-    push(@headerContent, "#endif // ${conditionalString}\n\n") if $conditionalString;
+    AddToHeader("#endif // ${conditionalString}\n\n") if $conditionalString;
 }
 
 sub GetInternalFields
@@ -677,12 +696,12 @@ sub GenerateHeaderCustomInternalFieldIndices
     my @customInternalFields = GetInternalFields($interface);
     my $customFieldCounter = 0;
     foreach my $customInternalField (@customInternalFields) {
-        push(@headerContent, <<END);
+        AddToHeader(<<END);
     static const int ${customInternalField} = v8DefaultWrapperInternalFieldCount + ${customFieldCounter};
 END
         $customFieldCounter++;
     }
-    push(@headerContent, <<END);
+    AddToHeader(<<END);
     static const int internalFieldCount = v8DefaultWrapperInternalFieldCount + ${customFieldCounter};
 END
 }
@@ -698,15 +717,15 @@ sub GenerateHeaderNamedAndIndexedPropertyAccessors
 {
     my $interface = shift;
     my $interfaceName = $interface->name;
-    my $hasCustomIndexedGetter = $interface->extendedAttributes->{"IndexedGetter"} || $interface->extendedAttributes->{"CustomGetOwnPropertySlot"};
-    my $hasCustomIndexedSetter = $interface->extendedAttributes->{"CustomIndexedSetter"} && !$interface->extendedAttributes->{"NumericIndexedGetter"};
+    my $hasIndexedGetter = $interface->extendedAttributes->{"IndexedGetter"} || $interface->extendedAttributes->{"CustomIndexedGetter"};
+    my $hasCustomIndexedSetter = $interface->extendedAttributes->{"CustomIndexedSetter"};
     my $hasCustomNamedGetter = $interface->extendedAttributes->{"NamedGetter"} || $interface->extendedAttributes->{"CustomNamedGetter"} || $interface->extendedAttributes->{"CustomGetOwnPropertySlot"};
     my $hasCustomNamedSetter = $interface->extendedAttributes->{"CustomNamedSetter"};
     my $hasCustomDeleters = $interface->extendedAttributes->{"CustomDeleteProperty"};
     my $hasCustomEnumerator = $interface->extendedAttributes->{"CustomEnumerateProperty"};
     if ($interfaceName eq "HTMLOptionsCollection") {
         $interfaceName = "HTMLCollection";
-        $hasCustomIndexedGetter = 1;
+        $hasIndexedGetter = 1;
         $hasCustomNamedGetter = 1;
     }
     if ($interfaceName eq "DOMWindow") {
@@ -718,43 +737,47 @@ sub GenerateHeaderNamedAndIndexedPropertyAccessors
     }
     if ($interfaceName eq "HTMLDocument") {
         $hasCustomNamedGetter = 0;
-        $hasCustomIndexedGetter = 0;
+        $hasIndexedGetter = 0;
     }
     my $isIndexerSpecialCase = exists $indexerSpecialCases{$interfaceName};
+    if ($isIndexerSpecialCase) {
+        $hasIndexedGetter = 1;
+        $hasCustomIndexedSetter = 1;
+    }
 
-    if ($hasCustomIndexedGetter || $isIndexerSpecialCase) {
-        push(@headerContent, <<END);
+    if ($hasIndexedGetter) {
+        AddToHeader(<<END);
     static v8::Handle<v8::Value> indexedPropertyGetter(uint32_t, const v8::AccessorInfo&);
 END
     }
 
-    if ($isIndexerSpecialCase || $hasCustomIndexedSetter) {
-        push(@headerContent, <<END);
+    if ($hasCustomIndexedSetter) {
+        AddToHeader(<<END);
     static v8::Handle<v8::Value> indexedPropertySetter(uint32_t, v8::Local<v8::Value>, const v8::AccessorInfo&);
 END
     }
     if ($hasCustomDeleters) {
-        push(@headerContent, <<END);
+        AddToHeader(<<END);
     static v8::Handle<v8::Boolean> indexedPropertyDeleter(uint32_t, const v8::AccessorInfo&);
 END
     }
     if ($hasCustomNamedGetter) {
-        push(@headerContent, <<END);
+        AddToHeader(<<END);
     static v8::Handle<v8::Value> namedPropertyGetter(v8::Local<v8::String>, const v8::AccessorInfo&);
 END
     }
     if ($hasCustomNamedSetter) {
-        push(@headerContent, <<END);
+        AddToHeader(<<END);
     static v8::Handle<v8::Value> namedPropertySetter(v8::Local<v8::String>, v8::Local<v8::Value>, const v8::AccessorInfo&);
 END
     }
     if ($hasCustomDeleters) {
-        push(@headerContent, <<END);
+        AddToHeader(<<END);
     static v8::Handle<v8::Boolean> namedPropertyDeleter(v8::Local<v8::String>, const v8::AccessorInfo&);
 END
     }
     if ($hasCustomEnumerator) {
-        push(@headerContent, <<END);
+        AddToHeader(<<END);
     static v8::Handle<v8::Array> namedPropertyEnumerator(const v8::AccessorInfo&);
     static v8::Handle<v8::Integer> namedPropertyQuery(v8::Local<v8::String>, const v8::AccessorInfo&);
 END
@@ -766,13 +789,33 @@ sub GenerateHeaderCustomCall
     my $interface = shift;
 
     if ($interface->extendedAttributes->{"CustomCall"}) {
-        push(@headerContent, "    static v8::Handle<v8::Value> callAsFunctionCallback(const v8::Arguments&);\n");
+        AddToHeader("    static v8::Handle<v8::Value> callAsFunctionCallback(const v8::Arguments&);\n");
     }
     if ($interface->name eq "Location") {
-        push(@headerContent, "    static v8::Handle<v8::Value> assignAttrGetterCustom(v8::Local<v8::String> name, const v8::AccessorInfo&);\n");
-        push(@headerContent, "    static v8::Handle<v8::Value> reloadAttrGetterCustom(v8::Local<v8::String> name, const v8::AccessorInfo&);\n");
-        push(@headerContent, "    static v8::Handle<v8::Value> replaceAttrGetterCustom(v8::Local<v8::String> name, const v8::AccessorInfo&);\n");
+        AddToHeader("    static v8::Handle<v8::Value> assignAttrGetterCustom(v8::Local<v8::String> name, const v8::AccessorInfo&);\n");
+        AddToHeader("    static v8::Handle<v8::Value> reloadAttrGetterCustom(v8::Local<v8::String> name, const v8::AccessorInfo&);\n");
+        AddToHeader("    static v8::Handle<v8::Value> replaceAttrGetterCustom(v8::Local<v8::String> name, const v8::AccessorInfo&);\n");
     }
+}
+
+sub HasActivityLogging
+{
+    my $forMainWorldSuffix = shift;
+    my $attrExt = shift;
+    my $access = shift;
+
+    if (!$attrExt->{"ActivityLog"}) {
+        return 0;
+    }
+    my $logAllAccess = ($attrExt->{"ActivityLog"} =~ /^Access/);
+    my $logGetter = ($attrExt->{"ActivityLog"} =~ /^Getter/);
+    my $logSetter = ($attrExt->{"ActivityLog"} =~ /^Setter/);
+    my $logOnlyIsolatedWorlds = ($attrExt->{"ActivityLog"} =~ /ForIsolatedWorlds$/);
+
+    if ($logOnlyIsolatedWorlds && $forMainWorldSuffix eq "ForMainWorld") {
+        return 0;
+    }
+    return $logAllAccess || ($logGetter && $access eq "Getter") || ($logSetter && $access eq "Setter");
 }
 
 sub IsConstructable
@@ -830,7 +873,7 @@ sub GenerateDomainSafeFunctionGetter
     my $newTemplateParams = "${interfaceName}V8Internal::${funcName}MethodCallback, v8Undefined(), $signature";
 
     AddToImplIncludes("Frame.h");
-    push(@implContentInternals, <<END);
+    AddToImplContentInternals(<<END);
 static v8::Handle<v8::Value> ${funcName}AttrGetter(v8::Local<v8::String> name, const v8::AccessorInfo& info)
 {
     // This is only for getting a unique pointer which we can pass to privateTemplate.
@@ -859,6 +902,8 @@ static v8::Handle<v8::Value> ${funcName}AttrGetter(v8::Local<v8::String> name, c
     return privateTemplate->GetFunction();
 }
 
+END
+    AddToImplContentInternals(<<END);
 static v8::Handle<v8::Value> ${funcName}AttrGetterCallback(v8::Local<v8::String> name, const v8::AccessorInfo& info)
 {
     return ${interfaceName}V8Internal::${funcName}AttrGetter(name, info);
@@ -872,7 +917,7 @@ sub GenerateDomainSafeFunctionSetter
     my $interfaceName = shift;
     my $v8InterfaceName = "V8" . $interfaceName;
 
-    push(@implContentInternals, <<END);
+    AddToImplContentInternals(<<END);
 static void ${interfaceName}DomainSafeFunctionSetter(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
 {
     v8::Handle<v8::Object> holder = info.This()->FindInstanceInPrototypeChain(${v8InterfaceName}::GetTemplate(info.GetIsolate(), worldType(info.GetIsolate())));
@@ -893,7 +938,7 @@ sub GenerateConstructorGetter
     my $interface = shift;
     my $interfaceName = $interface->name;
 
-    push(@implContentInternals, <<END);
+    AddToImplContentInternals(<<END);
 static v8::Handle<v8::Value> ${interfaceName}ConstructorGetter(v8::Local<v8::String> name, const v8::AccessorInfo& info)
 {
     v8::Handle<v8::Value> data = info.Data();
@@ -911,11 +956,53 @@ sub GenerateFeatureObservation
     my $measureAs = shift;
 
     if ($measureAs) {
-        AddToImplIncludes("FeatureObserver.h");
-        return "    FeatureObserver::observe(activeDOMWindow(BindingState::instance()), FeatureObserver::${measureAs});\n";
+        AddToImplIncludes("UseCounter.h");
+        return "    UseCounter::observe(activeDOMWindow(BindingState::instance()), UseCounter::${measureAs});\n";
     }
 
     return "";
+}
+
+sub GenerateActivityLogging
+{
+    my $accessType = shift;
+    my $interface = shift;
+    my $propertyName = shift;
+
+    my $visibleInterfaceName = $codeGenerator->GetVisibleInterfaceName($interface);
+
+    AddToImplIncludes("V8Binding.h");
+    AddToImplIncludes("V8DOMActivityLogger.h");
+    AddToImplIncludes("wtf/Vector.h");
+
+    my $code = "";
+    if ($accessType eq "Method") {
+        $code .= <<END;
+    V8PerContextData* contextData = V8PerContextData::from(args.GetIsolate()->GetCurrentContext());
+    if (contextData && contextData->activityLogger()) {
+        Vector<v8::Handle<v8::Value> > loggerArgs = toVectorOfArguments(args);
+        contextData->activityLogger()->log("${visibleInterfaceName}.${propertyName}", args.Length(), loggerArgs.data(), "${accessType}");
+    }
+END
+    } elsif ($accessType eq "Setter") {
+        $code .= <<END;
+    V8PerContextData* contextData = V8PerContextData::from(info.GetIsolate()->GetCurrentContext());
+    if (contextData && contextData->activityLogger()) {
+        v8::Handle<v8::Value> loggerArg[] = { value };
+        contextData->activityLogger()->log("${visibleInterfaceName}.${propertyName}", 1, &loggerArg[0], "${accessType}");
+    }
+END
+    } elsif ($accessType eq "Getter") {
+        $code .= <<END;
+    V8PerContextData* contextData = V8PerContextData::from(info.GetIsolate()->GetCurrentContext());
+    if (contextData && contextData->activityLogger())
+        contextData->activityLogger()->log("${visibleInterfaceName}.${propertyName}", 0, 0, "${accessType}");
+END
+    } else {
+        die "Unrecognized activity logging access type";
+    }
+
+    return $code;
 }
 
 sub GenerateNormalAttrGetterCallback
@@ -930,18 +1017,24 @@ sub GenerateNormalAttrGetterCallback
     my $attrName = $attribute->signature->name;
 
     my $conditionalString = $codeGenerator->GenerateConditionalString($attribute->signature);
-    push(@implContentInternals, "#if ${conditionalString}\n\n") if $conditionalString;
+    my $code = "";
+    $code .= "#if ${conditionalString}\n\n" if $conditionalString;
 
-    push(@implContentInternals, "static v8::Handle<v8::Value> ${attrName}AttrGetterCallback${forMainWorldSuffix}(v8::Local<v8::String> name, const v8::AccessorInfo& info)\n");
-    push(@implContentInternals, "{\n");
-    push(@implContentInternals, GenerateFeatureObservation($attrExt->{"MeasureAs"}));
-    if (HasCustomGetter($attrExt)) {
-        push(@implContentInternals, "    return ${v8InterfaceName}::${attrName}AttrGetterCustom(name, info);\n");
-    } else {
-        push(@implContentInternals, "    return ${interfaceName}V8Internal::${attrName}AttrGetter${forMainWorldSuffix}(name, info);\n");
+    $code .= "static v8::Handle<v8::Value> ${attrName}AttrGetterCallback${forMainWorldSuffix}(v8::Local<v8::String> name, const v8::AccessorInfo& info)\n";
+    $code .= "{\n";
+    $code .= GenerateFeatureObservation($attrExt->{"MeasureAs"});
+    if (HasActivityLogging($forMainWorldSuffix, $attrExt, "Getter")) {
+        $code .= GenerateActivityLogging("Getter", $interface, "${attrName}");
     }
-    push(@implContentInternals, "}\n\n");
-    push(@implContentInternals, "#endif // ${conditionalString}\n\n") if $conditionalString;
+    if (HasCustomGetter($attrExt)) {
+        $code .= "    return ${v8InterfaceName}::${attrName}AttrGetterCustom(name, info);\n";
+    } else {
+        $code .= "    return ${interfaceName}V8Internal::${attrName}AttrGetter${forMainWorldSuffix}(name, info);\n";
+    }
+    $code .= "}\n\n";
+    $code .= "#endif // ${conditionalString}\n\n" if $conditionalString;
+
+    AddToImplContentInternals($code);
 }
 
 sub GenerateNormalAttrGetter
@@ -966,42 +1059,43 @@ sub GenerateNormalAttrGetter
     my $svgNativeType = $codeGenerator->GetSVGTypeNeedingTearOff($interfaceName);
 
     my $conditionalString = $codeGenerator->GenerateConditionalString($attribute->signature);
-    push(@implContentInternals, "#if ${conditionalString}\n\n") if $conditionalString;
-    push(@implContentInternals, <<END);
+    my $code = "";
+    $code .= "#if ${conditionalString}\n\n" if $conditionalString;
+    $code .= <<END;
 static v8::Handle<v8::Value> ${attrName}AttrGetter${forMainWorldSuffix}(v8::Local<v8::String> name, const v8::AccessorInfo& info)
 {
 END
     if ($svgNativeType) {
         my $svgWrappedNativeType = $codeGenerator->GetSVGWrappedTypeNeedingTearOff($interfaceName);
         if ($svgWrappedNativeType =~ /List/) {
-            push(@implContentInternals, <<END);
+            $code .= <<END;
     $svgNativeType* imp = ${v8InterfaceName}::toNative(info.Holder());
 END
         } else {
-            push(@implContentInternals, <<END);
+            $code .= <<END;
     $svgNativeType* wrapper = ${v8InterfaceName}::toNative(info.Holder());
     $svgWrappedNativeType& impInstance = wrapper->propertyReference();
 END
             if ($getterStringUsesImp) {
-                push(@implContentInternals, <<END);
+                $code .= <<END;
     $svgWrappedNativeType* imp = &impInstance;
 END
             }
         }
     } elsif ($attrExt->{"OnProto"} || $attrExt->{"Unforgeable"}) {
         if ($interfaceName eq "DOMWindow") {
-            push(@implContentInternals, <<END);
+            $code .= <<END;
     v8::Handle<v8::Object> holder = info.Holder();
 END
         } else {
             # perform lookup first
-            push(@implContentInternals, <<END);
+            $code .= <<END;
     v8::Handle<v8::Object> holder = info.This()->FindInstanceInPrototypeChain(${v8InterfaceName}::GetTemplate(info.GetIsolate(), worldType(info.GetIsolate())));
     if (holder.IsEmpty())
         return v8Undefined();
 END
         }
-        push(@implContentInternals, <<END);
+        $code .= <<END;
     ${interfaceName}* imp = ${v8InterfaceName}::toNative(holder);
 END
     } else {
@@ -1010,15 +1104,16 @@ END
         if ($getterStringUsesImp && $reflect && !$url && $codeGenerator->InheritsInterface($interface, "Node") && $codeGenerator->IsStringType($attrType)) {
             # Generate super-compact call for regular attribute getter:
             my ($functionName, @arguments) = $codeGenerator->GetterExpression(\%implIncludes, $interfaceName, $attribute);
-            push(@implContentInternals, "    Element* imp = V8Element::toNative(info.Holder());\n");
-            push(@implContentInternals, "    return v8String(imp->${functionName}(" . join(", ", @arguments) . "), info.GetIsolate(), ReturnUnsafeHandle);\n");
-            push(@implContentInternals, "}\n\n");
-            push(@implContentInternals, "#endif // ${conditionalString}\n\n") if $conditionalString;
+            $code .= "    Element* imp = V8Element::toNative(info.Holder());\n";
+            $code .= "    return v8String(imp->${functionName}(" . join(", ", @arguments) . "), info.GetIsolate(), ReturnUnsafeHandle);\n";
+            $code .= "}\n\n";
+            $code .= "#endif // ${conditionalString}\n\n" if $conditionalString;
+            AddToImplContentInternals($code);
             return;
             # Skip the rest of the function!
         }
         if ($attribute->signature->type eq "SerializedScriptValue" && $attrExt->{"CachedAttribute"}) {
-            push(@implContentInternals, <<END);
+            $code .= <<END;
     v8::Handle<v8::String> propertyName = v8::String::NewSymbol("${attrName}");
     v8::Handle<v8::Value> value = info.Holder()->GetHiddenValue(propertyName);
     if (!value.IsEmpty())
@@ -1026,7 +1121,7 @@ END
 END
         }
         if (!$attribute->isStatic) {
-            push(@implContentInternals, <<END);
+            $code .= <<END;
     ${interfaceName}* imp = ${v8InterfaceName}::toNative(info.Holder());
 END
         }
@@ -1034,18 +1129,18 @@ END
 
     # Generate security checks if necessary
     if ($attribute->signature->extendedAttributes->{"CheckSecurityForNode"}) {
-        push(@implContentInternals, "    if (!BindingSecurity::shouldAllowAccessToNode(BindingState::instance(), imp->" . $attribute->signature->name . "()))\n        return v8::Handle<v8::Value>(v8Null(info.GetIsolate()));\n\n");
+        $code .= "    if (!BindingSecurity::shouldAllowAccessToNode(BindingState::instance(), imp->" . $attribute->signature->name . "()))\n        return v8::Handle<v8::Value>(v8Null(info.GetIsolate()));\n\n";
     }
 
     my $useExceptions = 1 if $attribute->signature->extendedAttributes->{"GetterRaisesException"};
     my $isNullable = $attribute->signature->isNullable;
     if ($useExceptions) {
         AddToImplIncludes("ExceptionCode.h");
-        push(@implContentInternals, "    ExceptionCode ec = 0;\n");
+        $code .= "    ExceptionCode ec = 0;\n";
     }
 
     if ($isNullable) {
-        push(@implContentInternals, "    bool isNull = false;\n");
+        $code .= "    bool isNull = false;\n";
     }
 
     my $returnType = $attribute->signature->type;
@@ -1065,47 +1160,49 @@ END
         } else {
             $functionName = "imp->${functionName}";
         }
-        unshift(@arguments, GenerateCallWith($attribute->signature->extendedAttributes->{"CallWith"}, \@implContentInternals, "    ", 0));
+        my ($arg, $subCode) = GenerateCallWith($attribute->signature->extendedAttributes->{"CallWith"}, "    ", 0);
+        $code .= $subCode;
+        unshift(@arguments, @$arg);
         $getterString = "${functionName}(" . join(", ", @arguments) . ")";
     } else {
         $getterString = "impInstance";
     }
 
-    my $result;
+    my $expression;
     if ($attribute->signature->type eq "EventListener" && $interface->name eq "DOMWindow") {
-        push(@implContentInternals, "    if (!imp->document())\n");
-        push(@implContentInternals, "        return v8Undefined();\n");
+        $code .= "    if (!imp->document())\n";
+        $code .= "        return v8Undefined();\n";
     }
 
     if ($useExceptions || $isNullable) {
         if ($nativeType =~ /^V8StringResource/) {
-            push(@implContentInternals, "    " . ConvertToV8StringResource($attribute->signature, $nativeType, "v", $getterString) . ";\n");
+            $code .= "    " . ConvertToV8StringResource($attribute->signature, $nativeType, "v", $getterString) . ";\n";
         } else {
-            push(@implContentInternals, "    $nativeType v = $getterString;\n");
+            $code .= "    $nativeType v = $getterString;\n";
         }
 
         if ($isNullable) {
-            push(@implContentInternals, "    if (isNull)\n");
-            push(@implContentInternals, "        return v8Null(info.GetIsolate());\n");
+            $code .= "    if (isNull)\n";
+            $code .= "        return v8Null(info.GetIsolate());\n";
         }
 
         if ($useExceptions) {
-            push(@implContentInternals, "    if (UNLIKELY(ec))\n");
-            push(@implContentInternals, "        return setDOMException(ec, info.GetIsolate());\n");
+            $code .= "    if (UNLIKELY(ec))\n";
+            $code .= "        return setDOMException(ec, info.GetIsolate());\n";
 
             if ($codeGenerator->ExtendedAttributeContains($attribute->signature->extendedAttributes->{"CallWith"}, "ScriptState")) {
-                push(@implContentInternals, "    if (state.hadException())\n");
-                push(@implContentInternals, "        return throwError(state.exception(), info.GetIsolate());\n");
+                $code .= "    if (state.hadException())\n";
+                $code .= "        return throwError(state.exception(), info.GetIsolate());\n";
             }
         }
 
-        $result = "v";
-        $result .= ".release()" if ($codeGenerator->IsRefPtrType($returnType));
+        $expression = "v";
+        $expression .= ".release()" if ($codeGenerator->IsRefPtrType($returnType));
     } else {
         # Can inline the function call into the return statement to avoid overhead of using a Ref<> temporary
-        $result = $getterString;
+        $expression = $getterString;
         # Fix amigious conversion problem, by casting to the base type first ($getterString returns a type that inherits from SVGAnimatedEnumeration, not the base class directly).
-        $result = "static_pointer_cast<SVGAnimatedEnumeration>($result)" if $returnType eq "SVGAnimatedEnumeration";
+        $expression = "static_pointer_cast<SVGAnimatedEnumeration>($expression)" if $returnType eq "SVGAnimatedEnumeration";
     }
  
     # Special case for readonly or Replaceable attributes (with a few exceptions). This attempts to ensure that JS wrappers don't get
@@ -1123,24 +1220,30 @@ END
                 AddToImplIncludes("V8$arrayType.h");
                 AddToImplIncludes("$arrayType.h");
             }
-            push(@implContentInternals, "    return v8Array(${getterString}, info.GetIsolate());\n");
-            push(@implContentInternals, "}\n\n");
+            $code .= "    return v8Array(${getterString}, info.GetIsolate());\n";
+            $code .= "}\n\n";
+            AddToImplContentInternals($code);
             return;
         }
 
         AddIncludesForType($returnType);
         # Check for a wrapper in the wrapper cache. If there is one, we know that a hidden reference has already
         # been created. If we don't find a wrapper, we create both a wrapper and a hidden reference.
-        push(@implContentInternals, "    RefPtr<$returnType> result = ${getterString};\n");
-        push(@implContentInternals, "    v8::Handle<v8::Value> wrapper = result.get() ? v8::Handle<v8::Value>(DOMDataStore::getWrapper(result.get(), info.GetIsolate())) : v8Undefined();\n");
-        push(@implContentInternals, "    if (wrapper.IsEmpty()) {\n");
-        push(@implContentInternals, "        wrapper = toV8(result.get(), info.Holder(), info.GetIsolate());\n"); # FIXME: Could use wrap here since the wrapper is empty.
-        push(@implContentInternals, "        if (!wrapper.IsEmpty())\n");
-        push(@implContentInternals, "            V8HiddenPropertyName::setNamedHiddenReference(info.Holder(), \"${attrName}\", wrapper);\n");
-        push(@implContentInternals, "    }\n");
-        push(@implContentInternals, "    return wrapper;\n");
-        push(@implContentInternals, "}\n\n");
-        push(@implContentInternals, "#endif // ${conditionalString}\n\n") if $conditionalString;
+        $code .= "    RefPtr<$returnType> result = ${getterString};\n";
+        if ($forMainWorldSuffix) {
+          $code .= "    v8::Handle<v8::Value> wrapper = result.get() ? v8::Handle<v8::Value>(DOMDataStore::getWrapper${forMainWorldSuffix}(result.get())) : v8Undefined();\n";
+        } else {
+          $code .= "    v8::Handle<v8::Value> wrapper = result.get() ? v8::Handle<v8::Value>(DOMDataStore::getWrapper(result.get(), info.GetIsolate())) : v8Undefined();\n";
+        }
+        $code .= "    if (wrapper.IsEmpty()) {\n";
+        $code .= "        wrapper = toV8(result.get(), info.Holder(), info.GetIsolate());\n"; # FIXME: Could use wrap here since the wrapper is empty.
+        $code .= "        if (!wrapper.IsEmpty())\n";
+        $code .= "            V8HiddenPropertyName::setNamedHiddenReference(info.Holder(), \"${attrName}\", wrapper);\n";
+        $code .= "    }\n";
+        $code .= "    return wrapper;\n";
+        $code .= "}\n\n";
+        $code .= "#endif // ${conditionalString}\n\n" if $conditionalString;
+        AddToImplContentInternals($code);
         return;
     }
 
@@ -1148,14 +1251,14 @@ END
         AddToImplIncludes("V8$attrType.h");
         my $svgNativeType = $codeGenerator->GetSVGTypeNeedingTearOff($attrType);
         # Convert from abstract SVGProperty to real type, so the right toJS() method can be invoked.
-        push(@implContentInternals, "    return toV8Fast$forMainWorldSuffix(static_cast<$svgNativeType*>($result), info, imp);\n");
+        $code .= "    return toV8Fast$forMainWorldSuffix(static_cast<$svgNativeType*>($expression), info, imp);\n";
     } elsif ($codeGenerator->IsSVGTypeNeedingTearOff($attrType) and not $interfaceName =~ /List$/) {
         AddToImplIncludes("V8$attrType.h");
         AddToImplIncludes("SVGPropertyTearOff.h");
         my $tearOffType = $codeGenerator->GetSVGTypeNeedingTearOff($attrType);
         my $wrappedValue;
         if ($codeGenerator->IsSVGTypeWithWritablePropertiesNeedingTearOff($attrType) and not defined $attribute->signature->extendedAttributes->{"Immutable"}) {
-            my $getter = $result;
+            my $getter = $expression;
             $getter =~ s/imp->//;
             $getter =~ s/\(\)//;
 
@@ -1166,32 +1269,32 @@ END
                 AddToImplIncludes("SVGStaticPropertyWithParentTearOff.h");
                 $tearOffType =~ s/SVGPropertyTearOff</SVGStaticPropertyWithParentTearOff<$interfaceName, /;
 
-                if ($result =~ /matrix/ and $interfaceName eq "SVGTransform") {
+                if ($expression =~ /matrix/ and $interfaceName eq "SVGTransform") {
                     # SVGTransform offers a matrix() method for internal usage that returns an AffineTransform
                     # and a svgMatrix() method returning a SVGMatrix, used for the bindings.
-                    $result =~ s/matrix/svgMatrix/;
+                    $expression =~ s/matrix/svgMatrix/;
                 }
 
-                $wrappedValue = "WTF::getPtr(${tearOffType}::create(wrapper, $result, $updateMethod))";
+                $wrappedValue = "WTF::getPtr(${tearOffType}::create(wrapper, $expression, $updateMethod))";
             } else {
                 AddToImplIncludes("SVGStaticPropertyTearOff.h");
                 $tearOffType =~ s/SVGPropertyTearOff</SVGStaticPropertyTearOff<$interfaceName, /;
 
-                $wrappedValue = "WTF::getPtr(${tearOffType}::create(imp, $result, $updateMethod))";
+                $wrappedValue = "WTF::getPtr(${tearOffType}::create(imp, $expression, $updateMethod))";
             }
         } elsif ($tearOffType =~ /SVGStaticListPropertyTearOff/) {
-                $wrappedValue = "WTF::getPtr(${tearOffType}::create(imp, $result))";
+                $wrappedValue = "WTF::getPtr(${tearOffType}::create(imp, $expression))";
         } elsif ($tearOffType =~ /SVG(Point|PathSeg)List/) {
-                $wrappedValue = "WTF::getPtr($result)";
+                $wrappedValue = "WTF::getPtr($expression)";
         } else {
-                $wrappedValue = "WTF::getPtr(${tearOffType}::create($result))";
+                $wrappedValue = "WTF::getPtr(${tearOffType}::create($expression))";
         }
-        push(@implContentInternals, "    return toV8Fast$forMainWorldSuffix($wrappedValue, info, imp);\n");
+        $code .= "    return toV8Fast$forMainWorldSuffix($wrappedValue, info, imp);\n";
     } elsif ($attribute->signature->type eq "MessagePortArray") {
         AddToImplIncludes("MessagePort.h");
         AddToImplIncludes("V8MessagePort.h");
         my $getterFunc = $codeGenerator->WK_lcfirst($attribute->signature->name);
-        push(@implContentInternals, <<END);
+        $code .= <<END;
     MessagePortArray* ports = imp->${getterFunc}();
     if (!ports)
         return v8::Array::New(0);
@@ -1203,18 +1306,19 @@ END
 END
     } elsif ($attribute->signature->type eq "SerializedScriptValue" && $attrExt->{"CachedAttribute"}) {
         my $getterFunc = $codeGenerator->WK_lcfirst($attribute->signature->name);
-        push(@implContentInternals, <<END);
+        $code .= <<END;
     RefPtr<SerializedScriptValue> serialized = imp->${getterFunc}();
     value = serialized ? serialized->deserialize() : v8::Handle<v8::Value>(v8Null(info.GetIsolate()));
     info.Holder()->SetHiddenValue(propertyName, value);
     return value;
 END
     } else {
-        push(@implContentInternals, "    return " . NativeToJSValue($attribute->signature, $result, "info.Holder()", "info.GetIsolate()", "info", "imp", "ReturnUnsafeHandle", $forMainWorldSuffix).";\n");
+        $code .= "    return " . NativeToJSValue($attribute->signature, $expression, "info.Holder()", "info.GetIsolate()", "info", "imp", "ReturnUnsafeHandle", $forMainWorldSuffix).";\n";
     }
 
-    push(@implContentInternals, "}\n\n");  # end of getter
-    push(@implContentInternals, "#endif // ${conditionalString}\n\n") if $conditionalString;
+    $code .= "}\n\n";  # end of getter
+    $code .= "#endif // ${conditionalString}\n\n" if $conditionalString;
+    AddToImplContentInternals($code);
 }
 
 sub GenerateReplaceableAttrSetterCallback
@@ -1222,11 +1326,16 @@ sub GenerateReplaceableAttrSetterCallback
     my $interface = shift;
     my $interfaceName = $interface->name;
 
-    push(@implContentInternals, "static void ${interfaceName}ReplaceableAttrSetterCallback(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)\n");
-    push(@implContentInternals, "{\n");
-    push(@implContentInternals, GenerateFeatureObservation($interface->extendedAttributes->{"MeasureAs"}));
-    push(@implContentInternals, "    return ${interfaceName}V8Internal::${interfaceName}ReplaceableAttrSetter(name, value, info);\n");
-    push(@implContentInternals, "}\n\n");
+    my $code = "";
+    $code .= "static void ${interfaceName}ReplaceableAttrSetterCallback(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)\n";
+    $code .= "{\n";
+    $code .= GenerateFeatureObservation($interface->extendedAttributes->{"MeasureAs"});
+    if (HasActivityLogging("", $interface->extendedAttributes, "Setter")) {
+         die "IDL error: ActivityLog attribute cannot exist on a ReplacableAttrSetterCallback";
+    }
+    $code .= "    return ${interfaceName}V8Internal::${interfaceName}ReplaceableAttrSetter(name, value, info);\n";
+    $code .= "}\n\n";
+    AddToImplContentInternals($code);
 }
 
 sub GenerateReplaceableAttrSetter
@@ -1234,29 +1343,31 @@ sub GenerateReplaceableAttrSetter
     my $interface = shift;
     my $interfaceName = $interface->name;
 
-    push(@implContentInternals, <<END);
+    my $code = "";
+    $code .= <<END;
 static void ${interfaceName}ReplaceableAttrSetter(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
 {
 END
     if ($interface->extendedAttributes->{"CheckSecurity"}) {
         AddToImplIncludes("Frame.h");
-        push(@implContentInternals, <<END);
+        $code .= <<END;
     ${interfaceName}* imp = V8${interfaceName}::toNative(info.Holder());
     if (!BindingSecurity::shouldAllowAccessToFrame(BindingState::instance(), imp->frame()))
         return;
 END
     }
 
-    push(@implContentInternals, <<END);
+    $code .= <<END;
     info.This()->ForceSet(name, value);
 }
 
 END
+    AddToImplContentInternals($code);
 }
 
 sub GenerateCustomElementInvocationScopeIfNeeded
 {
-    my $out = shift;
+    my $code = "";
     my $ext = shift;
 
     if ($ext->{"DeliverCustomElementCallbacks"}) {
@@ -1265,12 +1376,13 @@ sub GenerateCustomElementInvocationScopeIfNeeded
         }
 
         AddToImplIncludes("CustomElementRegistry.h", "CUSTOM_ELEMENTS");
-        push(@$out, <<END);
+        $code .= <<END;
 #if ENABLE(CUSTOM_ELEMENTS)
     CustomElementRegistry::CallbackDeliveryScope deliveryScope;
 #endif
 END
     }
+    return $code;
 }
 
 sub GenerateNormalAttrSetterCallback
@@ -1285,18 +1397,23 @@ sub GenerateNormalAttrSetterCallback
     my $attrName = $attribute->signature->name;
 
     my $conditionalString = $codeGenerator->GenerateConditionalString($attribute->signature);
-    push(@implContentInternals, "#if ${conditionalString}\n\n") if $conditionalString;
+    my $code = "";
+    $code .= "#if ${conditionalString}\n\n" if $conditionalString;
 
-    push(@implContentInternals, "static void ${attrName}AttrSetterCallback${forMainWorldSuffix}(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)\n");
-    push(@implContentInternals, "{\n");
-    push(@implContentInternals, GenerateFeatureObservation($attrExt->{"MeasureAs"}));
-    if (HasCustomSetter($attrExt)) {
-        push(@implContentInternals, "    ${v8InterfaceName}::${attrName}AttrSetterCustom(name, value, info);\n");
-    } else {
-        push(@implContentInternals, "    ${interfaceName}V8Internal::${attrName}AttrSetter${forMainWorldSuffix}(name, value, info);\n");
+    $code .= "static void ${attrName}AttrSetterCallback${forMainWorldSuffix}(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)\n";
+    $code .= "{\n";
+    $code .= GenerateFeatureObservation($attrExt->{"MeasureAs"});
+    if (HasActivityLogging($forMainWorldSuffix, $attrExt, "Setter")) {
+        $code .= GenerateActivityLogging("Setter", $interface, "${attrName}");
     }
-    push(@implContentInternals, "}\n\n");
-    push(@implContentInternals, "#endif // ${conditionalString}\n\n") if $conditionalString;
+    if (HasCustomSetter($attrExt)) {
+        $code .= "    ${v8InterfaceName}::${attrName}AttrSetterCustom(name, value, info);\n";
+    } else {
+        $code .= "    ${interfaceName}V8Internal::${attrName}AttrSetter${forMainWorldSuffix}(name, value, info);\n";
+    }
+    $code .= "}\n\n";
+    $code .= "#endif // ${conditionalString}\n\n" if $conditionalString;
+    AddToImplContentInternals($code);
 }
 
 sub GenerateNormalAttrSetter
@@ -1316,9 +1433,10 @@ sub GenerateNormalAttrSetter
     }
 
     my $conditionalString = $codeGenerator->GenerateConditionalString($attribute->signature);
-    push(@implContentInternals, "#if ${conditionalString}\n\n") if $conditionalString;
-    push(@implContentInternals, "static void ${attrName}AttrSetter${forMainWorldSuffix}(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)\n");
-    push(@implContentInternals, "{\n");
+    my $code = "";
+    $code .= "#if ${conditionalString}\n\n" if $conditionalString;
+    $code .= "static void ${attrName}AttrSetter${forMainWorldSuffix}(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)\n";
+    $code .= "{\n";
 
     # If the "StrictTypeChecking" extended attribute is present, and the attribute's type is an
     # interface type, then if the incoming value does not implement that interface, a TypeError is
@@ -1328,10 +1446,10 @@ sub GenerateNormalAttrSetter
     if ($attribute->signature->extendedAttributes->{"StrictTypeChecking"}) {
         my $argType = $attribute->signature->type;
         if (IsWrapperType($argType)) {
-            push(@implContentInternals, "    if (!isUndefinedOrNull(value) && !V8${argType}::HasInstance(value, info.GetIsolate(), worldType(info.GetIsolate()))) {\n");
-            push(@implContentInternals, "        throwTypeError(0, info.GetIsolate());\n");
-            push(@implContentInternals, "        return;\n");
-            push(@implContentInternals, "    }\n");
+            $code .= "    if (!isUndefinedOrNull(value) && !V8${argType}::HasInstance(value, info.GetIsolate(), worldType(info.GetIsolate()))) {\n";
+            $code .= "        throwTypeError(0, info.GetIsolate());\n";
+            $code .= "        return;\n";
+            $code .= "    }\n";
         }
     }
 
@@ -1339,21 +1457,21 @@ sub GenerateNormalAttrSetter
     if ($svgNativeType) {
         my $svgWrappedNativeType = $codeGenerator->GetSVGWrappedTypeNeedingTearOff($interfaceName);
         if ($svgWrappedNativeType =~ /List$/) {
-            push(@implContentInternals, <<END);
+            $code .= <<END;
     $svgNativeType* imp = ${v8InterfaceName}::toNative(info.Holder());
 END
         } else {
             AddToImplIncludes("ExceptionCode.h");
-            push(@implContentInternals, "    $svgNativeType* wrapper = ${v8InterfaceName}::toNative(info.Holder());\n");
-            push(@implContentInternals, "    if (wrapper->isReadOnly()) {\n");
-            push(@implContentInternals, "        setDOMException(NO_MODIFICATION_ALLOWED_ERR, info.GetIsolate());\n");
-            push(@implContentInternals, "        return;\n");
-            push(@implContentInternals, "    }\n");
-            push(@implContentInternals, "    $svgWrappedNativeType& impInstance = wrapper->propertyReference();\n");
-            push(@implContentInternals, "    $svgWrappedNativeType* imp = &impInstance;\n");
+            $code .= "    $svgNativeType* wrapper = ${v8InterfaceName}::toNative(info.Holder());\n";
+            $code .= "    if (wrapper->isReadOnly()) {\n";
+            $code .= "        setDOMException(NO_MODIFICATION_ALLOWED_ERR, info.GetIsolate());\n";
+            $code .= "        return;\n";
+            $code .= "    }\n";
+            $code .= "    $svgWrappedNativeType& impInstance = wrapper->propertyReference();\n";
+            $code .= "    $svgWrappedNativeType* imp = &impInstance;\n";
         }
     } elsif ($attrExt->{"OnProto"}) {
-        push(@implContentInternals, <<END);
+        $code .= <<END;
     ${interfaceName}* imp = ${v8InterfaceName}::toNative(info.Holder());
 END
     } else {
@@ -1363,17 +1481,18 @@ END
             my $contentAttributeName = $reflect eq "VALUE_IS_MISSING" ? lc $attrName : $reflect;
             my $namespace = $codeGenerator->NamespaceForAttributeName($interfaceName, $contentAttributeName);
             AddToImplIncludes("${namespace}.h");
-            push(@implContentInternals, "    Element* imp = V8Element::toNative(info.Holder());\n");
-            push(@implContentInternals, "    V8TRYCATCH_FOR_V8STRINGRESOURCE_VOID(V8StringResource<WithNullCheck>, stringResource, value);\n");
-            push(@implContentInternals, "    imp->setAttribute(${namespace}::${contentAttributeName}Attr, stringResource);\n");
-            push(@implContentInternals, "}\n\n");
-            push(@implContentInternals, "#endif // ${conditionalString}\n\n") if $conditionalString;
+            $code .= "    Element* imp = V8Element::toNative(info.Holder());\n";
+            $code .= "    V8TRYCATCH_FOR_V8STRINGRESOURCE_VOID(V8StringResource<WithNullCheck>, stringResource, value);\n";
+            $code .= "    imp->setAttribute(${namespace}::${contentAttributeName}Attr, stringResource);\n";
+            $code .= "}\n\n";
+            $code .= "#endif // ${conditionalString}\n\n" if $conditionalString;
+            AddToImplContentInternals($code);
             return;
             # Skip the rest of the function!
         }
 
         if (!$attribute->isStatic) {
-            push(@implContentInternals, <<END);
+            $code .= <<END;
     ${interfaceName}* imp = ${v8InterfaceName}::toNative(info.Holder());
 END
         }
@@ -1382,21 +1501,21 @@ END
     my $nativeType = GetNativeTypeFromSignature($attribute->signature, 0);
     if ($attribute->signature->type eq "EventListener") {
         if ($interface->name eq "DOMWindow") {
-            push(@implContentInternals, "    if (!imp->document())\n");
-            push(@implContentInternals, "        return;\n");
+            $code .= "    if (!imp->document())\n";
+            $code .= "        return;\n";
         }
     } else {
         my $value = JSValueToNative($attribute->signature, "value", "info.GetIsolate()");
         my $arrayType = $codeGenerator->GetArrayType($nativeType);
 
         if ($nativeType =~ /^V8StringResource/) {
-            push(@implContentInternals, "    " . ConvertToV8StringResource($attribute->signature, $nativeType, "v", $value, "VOID") . "\n");
+            $code .= "    " . ConvertToV8StringResource($attribute->signature, $nativeType, "v", $value, "VOID") . "\n";
         } elsif ($arrayType) {
-            push(@implContentInternals, "    Vector<$arrayType> v = $value;\n");
+            $code .= "    Vector<$arrayType> v = $value;\n";
         } elsif ($attribute->signature->extendedAttributes->{"EnforceRange"}) {
-            push(@implContentInternals, "    V8TRYCATCH_WITH_TYPECHECK_VOID($nativeType, v, $value, info.GetIsolate());\n");
+            $code .= "    V8TRYCATCH_WITH_TYPECHECK_VOID($nativeType, v, $value, info.GetIsolate());\n";
         } else {
-            push(@implContentInternals, "    V8TRYCATCH_VOID($nativeType, v, $value);\n");
+            $code .= "    V8TRYCATCH_VOID($nativeType, v, $value);\n";
         }
     }
 
@@ -1408,52 +1527,52 @@ END
             push(@validEqualities, "string == \"$enumValue\"");
         }
         my $enumValidationExpression = join(" || ", @validEqualities);
-        push(@implContentInternals, <<END);
+        $code .= <<END;
     String string = v;
     if (!($enumValidationExpression))
         return;
 END
     }
 
-    my $result = "v";
+    my $expression = "v";
     my $returnType = $attribute->signature->type;
     if ($codeGenerator->IsRefPtrType($returnType) && !$codeGenerator->GetArrayType($returnType)) {
-        $result = "WTF::getPtr(" . $result . ")";
+        $expression = "WTF::getPtr(" . $expression . ")";
     }
 
-    GenerateCustomElementInvocationScopeIfNeeded(\@implContentInternals, $attribute->signature->extendedAttributes);
+    $code .= GenerateCustomElementInvocationScopeIfNeeded($attribute->signature->extendedAttributes);
 
     my $useExceptions = 1 if $attribute->signature->extendedAttributes->{"SetterRaisesException"};
 
     if ($useExceptions) {
         AddToImplIncludes("ExceptionCode.h");
-        push(@implContentInternals, "    ExceptionCode ec = 0;\n");
+        $code .= "    ExceptionCode ec = 0;\n";
     }
 
     if ($interfaceName eq "SVGNumber") {
-        push(@implContentInternals, "    *imp = $result;\n");
+        $code .= "    *imp = $expression;\n";
     } else {
         if ($attribute->signature->type eq "EventListener") {
             my $implSetterFunctionName = $codeGenerator->WK_ucfirst($attrName);
             AddToImplIncludes("V8AbstractEventListener.h");
             if (!$codeGenerator->InheritsInterface($interface, "Node")) {
-                push(@implContentInternals, "    transferHiddenDependency(info.Holder(), imp->$attrName(), value, ${v8InterfaceName}::eventListenerCacheIndex, info.GetIsolate());\n");
+                $code .= "    transferHiddenDependency(info.Holder(), imp->$attrName(), value, ${v8InterfaceName}::eventListenerCacheIndex, info.GetIsolate());\n";
             }
             AddToImplIncludes("V8EventListenerList.h");
             if ($interfaceName eq "WorkerContext" and $attribute->signature->name eq "onerror") {
                 AddToImplIncludes("V8WorkerContextErrorHandler.h");
-                push(@implContentInternals, "    imp->set$implSetterFunctionName(V8EventListenerList::findOrCreateWrapper<V8WorkerContextErrorHandler>(value, true)");
+                $code .= "    imp->set$implSetterFunctionName(V8EventListenerList::findOrCreateWrapper<V8WorkerContextErrorHandler>(value, true)";
             } elsif ($interfaceName eq "DOMWindow" and $attribute->signature->name eq "onerror") {
                 AddToImplIncludes("V8WindowErrorHandler.h");
-                push(@implContentInternals, "    imp->set$implSetterFunctionName(V8EventListenerList::findOrCreateWrapper<V8WindowErrorHandler>(value, true)");
+                $code .= "    imp->set$implSetterFunctionName(V8EventListenerList::findOrCreateWrapper<V8WindowErrorHandler>(value, true)";
             } else {
-                push(@implContentInternals, "    imp->set$implSetterFunctionName(V8EventListenerList::getEventListener(value, true, ListenerFindOrCreate)");
+                $code .= "    imp->set$implSetterFunctionName(V8EventListenerList::getEventListener(value, true, ListenerFindOrCreate)";
             }
-            push(@implContentInternals, ", ec") if $useExceptions;
-            push(@implContentInternals, ");\n");
+            $code .= ", ec" if $useExceptions;
+            $code .= ");\n";
         } else {
             my ($functionName, @arguments) = $codeGenerator->SetterExpression(\%implIncludes, $interfaceName, $attribute);
-            push(@arguments, $result);
+            push(@arguments, $expression);
             push(@arguments, "ec") if $useExceptions;
             if ($attribute->signature->extendedAttributes->{"ImplementedBy"}) {
                 my $implementedBy = $attribute->signature->extendedAttributes->{"ImplementedBy"};
@@ -1465,39 +1584,42 @@ END
             } else {
                 $functionName = "imp->${functionName}";
             }
-            unshift(@arguments, GenerateCallWith($attribute->signature->extendedAttributes->{"CallWith"}, \@implContentInternals, "    ", 1));
-            push(@implContentInternals, "    ${functionName}(" . join(", ", @arguments) . ");\n");
+            my ($arg, $subCode) = GenerateCallWith($attribute->signature->extendedAttributes->{"CallWith"}, "    ", 1);
+            $code .= $subCode;
+            unshift(@arguments, @$arg);
+            $code .= "    ${functionName}(" . join(", ", @arguments) . ");\n";
         }
     }
 
     if ($useExceptions) {
-        push(@implContentInternals, "    if (UNLIKELY(ec))\n");
-        push(@implContentInternals, "        setDOMException(ec, info.GetIsolate());\n");
+        $code .= "    if (UNLIKELY(ec))\n";
+        $code .= "        setDOMException(ec, info.GetIsolate());\n";
     }
 
     if ($codeGenerator->ExtendedAttributeContains($attribute->signature->extendedAttributes->{"CallWith"}, "ScriptState")) {
-        push(@implContentInternals, "    if (state.hadException())\n");
-        push(@implContentInternals, "        throwError(state.exception(), info.GetIsolate());\n");
+        $code .= "    if (state.hadException())\n";
+        $code .= "        throwError(state.exception(), info.GetIsolate());\n";
     }
 
     if ($svgNativeType) {
         if ($useExceptions) {
-            push(@implContentInternals, "    if (!ec)\n");
-            push(@implContentInternals, "        wrapper->commitChange();\n");
+            $code .= "    if (!ec)\n";
+            $code .= "        wrapper->commitChange();\n";
         } else {
-            push(@implContentInternals, "    wrapper->commitChange();\n");
+            $code .= "    wrapper->commitChange();\n";
         }
     }
 
     if ($attribute->signature->type eq "SerializedScriptValue" && $attribute->signature->extendedAttributes->{"CachedAttribute"}) {
-        push(@implContentInternals, <<END);
+        $code .= <<END;
     info.Holder()->DeleteHiddenValue(v8::String::NewSymbol("${attrName}")); // Invalidate the cached value.
 END
     }
 
-    push(@implContentInternals, "    return;\n");
-    push(@implContentInternals, "}\n\n");  # end of setter
-    push(@implContentInternals, "#endif // ${conditionalString}\n\n") if $conditionalString;
+    $code .= "    return;\n";
+    $code .= "}\n\n";  # end of setter
+    $code .= "#endif // ${conditionalString}\n\n" if $conditionalString;
+    AddToImplContentInternals($code);
 }
 
 sub GenerateParametersCheckExpression
@@ -1555,7 +1677,7 @@ sub GenerateFunctionParametersCheck
     my $hasVariadic = 0;
     my $numMandatoryParams = @{$function->parameters};
     foreach my $parameter (@{$function->parameters}) {
-        if ($parameter->extendedAttributes->{"Optional"}) {
+        if ($parameter->isOptional) {
             push(@orExpression, GenerateParametersCheckExpression($numParameters, $function));
             $numMandatoryParams--;
         }
@@ -1588,29 +1710,31 @@ sub GenerateOverloadedFunction
 
     my $conditionalString = $codeGenerator->GenerateConditionalString($function->signature);
     my $leastNumMandatoryParams = 255;
-    push(@implContentInternals, "#if ${conditionalString}\n\n") if $conditionalString;
-    push(@implContentInternals, <<END);
+    my $code = "";
+    $code .= "#if ${conditionalString}\n\n" if $conditionalString;
+    $code .= <<END;
 static v8::Handle<v8::Value> ${name}Method${forMainWorldSuffix}(const v8::Arguments& args)
 {
 END
-    push(@implContentInternals, GenerateFeatureObservation($function->signature->extendedAttributes->{"MeasureAs"}));
+    $code .= GenerateFeatureObservation($function->signature->extendedAttributes->{"MeasureAs"});
 
     foreach my $overload (@{$function->{overloads}}) {
         my ($numMandatoryParams, $parametersCheck) = GenerateFunctionParametersCheck($overload);
         $leastNumMandatoryParams = $numMandatoryParams if ($numMandatoryParams < $leastNumMandatoryParams);
-        push(@implContentInternals, "    if ($parametersCheck)\n");
+        $code .= "    if ($parametersCheck)\n";
         my $overloadedIndexString = $overload->{overloadIndex};
-        push(@implContentInternals, "        return ${name}${overloadedIndexString}Method${forMainWorldSuffix}(args);\n");
+        $code .= "        return ${name}${overloadedIndexString}Method${forMainWorldSuffix}(args);\n";
     }
     if ($leastNumMandatoryParams >= 1) {
-        push(@implContentInternals, "    if (args.Length() < $leastNumMandatoryParams)\n");
-        push(@implContentInternals, "        return throwNotEnoughArgumentsError(args.GetIsolate());\n");
+        $code .= "    if (args.Length() < $leastNumMandatoryParams)\n";
+        $code .= "        return throwNotEnoughArgumentsError(args.GetIsolate());\n";
     }
-    push(@implContentInternals, <<END);
+    $code .= <<END;
     return throwTypeError(0, args.GetIsolate());
 END
-    push(@implContentInternals, "}\n\n");
-    push(@implContentInternals, "#endif // ${conditionalString}\n\n") if $conditionalString;
+    $code .= "}\n\n";
+    $code .= "#endif // ${conditionalString}\n\n" if $conditionalString;
+    AddToImplContentInternals($code);
 }
 
 sub GenerateFunctionCallback
@@ -1624,19 +1748,24 @@ sub GenerateFunctionCallback
     my $name = $function->signature->name;
 
     my $conditionalString = $codeGenerator->GenerateConditionalString($function->signature);
-    push(@implContentInternals, "#if ${conditionalString}\n\n") if $conditionalString;
-    push(@implContentInternals, <<END);
+    my $code = "";
+    $code .= "#if ${conditionalString}\n\n" if $conditionalString;
+    $code .= <<END;
 static v8::Handle<v8::Value> ${name}MethodCallback${forMainWorldSuffix}(const v8::Arguments& args)
 {
 END
-    push(@implContentInternals, GenerateFeatureObservation($function->signature->extendedAttributes->{"MeasureAs"}));
-    if (HasCustomMethod($function->signature->extendedAttributes)) {
-        push(@implContentInternals, "    return ${v8InterfaceName}::${name}MethodCustom(args);\n");
-    } else {
-        push(@implContentInternals, "    return ${interfaceName}V8Internal::${name}Method${forMainWorldSuffix}(args);\n");
+    $code .= GenerateFeatureObservation($function->signature->extendedAttributes->{"MeasureAs"});
+    if (HasActivityLogging($forMainWorldSuffix, $function->signature->extendedAttributes, "Access")) {
+        $code .= GenerateActivityLogging("Method", $interface, "${name}");
     }
-    push(@implContentInternals, "}\n\n");
-    push(@implContentInternals, "#endif // ${conditionalString}\n\n") if $conditionalString;
+    if (HasCustomMethod($function->signature->extendedAttributes)) {
+        $code .= "    return ${v8InterfaceName}::${name}MethodCustom(args);\n";
+    } else {
+        $code .= "    return ${interfaceName}V8Internal::${name}Method${forMainWorldSuffix}(args);\n";
+    }
+    $code .= "}\n\n";
+    $code .= "#endif // ${conditionalString}\n\n" if $conditionalString;
+    AddToImplContentInternals($code);
 }
 
 sub GenerateFunction
@@ -1660,9 +1789,10 @@ sub GenerateFunction
     }
 
     my $conditionalString = $codeGenerator->GenerateConditionalString($function->signature);
-    push(@implContentInternals, "#if ${conditionalString}\n\n") if $conditionalString;
-    push(@implContentInternals, "static v8::Handle<v8::Value> ${name}Method${forMainWorldSuffix}(const v8::Arguments& args)\n");
-    push(@implContentInternals, "{\n");
+    my $code = "";
+    $code .= "#if ${conditionalString}\n\n" if $conditionalString;
+    $code .= "static v8::Handle<v8::Value> ${name}Method${forMainWorldSuffix}(const v8::Arguments& args)\n";
+    $code .= "{\n";
 
     if ($name eq "addEventListener" || $name eq "removeEventListener") {
         my $lookupType = ($name eq "addEventListener") ? "OrCreate" : "Only";
@@ -1670,36 +1800,38 @@ sub GenerateFunction
         my $hiddenDependencyAction = ($name eq "addEventListener") ? "create" : "remove";
 
         AddToImplIncludes("V8EventListenerList.h");
-        push(@implContentInternals, <<END);
+        $code .= <<END;
     RefPtr<EventListener> listener = V8EventListenerList::getEventListener(args[1], false, ListenerFind${lookupType});
     if (listener) {
         V8TRYCATCH_FOR_V8STRINGRESOURCE(V8StringResource<WithNullCheck>, stringResource, args[0]);
         V8${interfaceName}::toNative(args.Holder())->${name}(stringResource, listener${passRefPtrHandling}, args[2]->BooleanValue());
 END
         if (!$codeGenerator->InheritsInterface($interface, "Node")) {
-            push(@implContentInternals, <<END);
+            $code .= <<END;
         ${hiddenDependencyAction}HiddenDependency(args.Holder(), args[1], V8${interfaceName}::eventListenerCacheIndex, args.GetIsolate());
 END
         }
-        push(@implContentInternals, <<END);
+        $code .= <<END;
     }
     return v8Undefined();
 }
 
 END
-        push(@implContentInternals, "#endif // ${conditionalString}\n\n") if $conditionalString;
+        $code .= "#endif // ${conditionalString}\n\n" if $conditionalString;
+        AddToImplContentInternals($code);
         return;
     }
 
-    push(@implContentInternals, GenerateArgumentsCountCheck($function, $interface));
+    $code .= GenerateArgumentsCountCheck($function, $interface);
 
     if ($name eq "set" and $interface->extendedAttributes->{"TypedArray"}) {
         AddToImplIncludes("V8ArrayBufferViewCustom.h");
-        push(@implContentInternals, <<END);
+        $code .= <<END;
     return setWebGLArrayHelper<$interfaceName, ${v8InterfaceName}>(args);
 }
 
 END
+        AddToImplContentInternals($code);
         return;
     }
 
@@ -1708,29 +1840,29 @@ END
     if ($svgNativeType) {
         my $nativeClassName = GetNativeType($interfaceName); 
         if ($interfaceName =~ /List$/) {
-            push(@implContentInternals, "    $nativeClassName imp = ${v8InterfaceName}::toNative(args.Holder());\n");
+            $code .= "    $nativeClassName imp = ${v8InterfaceName}::toNative(args.Holder());\n";
         } else {
             AddToImplIncludes("ExceptionCode.h");
-            push(@implContentInternals, "    $nativeClassName wrapper = ${v8InterfaceName}::toNative(args.Holder());\n");
-            push(@implContentInternals, "    if (wrapper->isReadOnly())\n");
-            push(@implContentInternals, "        return setDOMException(NO_MODIFICATION_ALLOWED_ERR, args.GetIsolate());\n");
+            $code .= "    $nativeClassName wrapper = ${v8InterfaceName}::toNative(args.Holder());\n";
+            $code .= "    if (wrapper->isReadOnly())\n";
+            $code .= "        return setDOMException(NO_MODIFICATION_ALLOWED_ERR, args.GetIsolate());\n";
             my $svgWrappedNativeType = $codeGenerator->GetSVGWrappedTypeNeedingTearOff($interfaceName);
-            push(@implContentInternals, "    $svgWrappedNativeType& impInstance = wrapper->propertyReference();\n");
-            push(@implContentInternals, "    $svgWrappedNativeType* imp = &impInstance;\n");
+            $code .= "    $svgWrappedNativeType& impInstance = wrapper->propertyReference();\n";
+            $code .= "    $svgWrappedNativeType* imp = &impInstance;\n";
         }
     } elsif (!$function->isStatic) {
-        push(@implContentInternals, <<END);
+        $code .= <<END;
     ${interfaceName}* imp = ${v8InterfaceName}::toNative(args.Holder());
 END
     }
 
-    GenerateCustomElementInvocationScopeIfNeeded(\@implContentInternals, $funcExt);
+    $code .= GenerateCustomElementInvocationScopeIfNeeded($funcExt);
 
     # Check domain security if needed
     if ($interface->extendedAttributes->{"CheckSecurity"} && !$function->signature->extendedAttributes->{"DoNotCheckSecurity"}) {
         # We have not find real use cases yet.
         AddToImplIncludes("Frame.h");
-        push(@implContentInternals, <<END);
+        $code .= <<END;
     if (!BindingSecurity::shouldAllowAccessToFrame(BindingState::instance(), imp->frame()))
         return v8Undefined();
 END
@@ -1747,63 +1879,64 @@ END
 
     if ($raisesExceptions) {
         AddToImplIncludes("ExceptionCode.h");
-        push(@implContentInternals, "    ExceptionCode ec = 0;\n");
-        push(@implContentInternals, "    {\n");
+        $code .= "    ExceptionCode ec = 0;\n";
+        $code .= "    {\n";
         # The brace here is needed to prevent the ensuing 'goto fail's from jumping past constructors
         # of objects (like Strings) declared later, causing compile errors. The block scope ends
         # right before the label 'fail:'.
     }
 
     if ($function->signature->extendedAttributes->{"CheckSecurityForNode"}) {
-        push(@implContentInternals, "    if (!BindingSecurity::shouldAllowAccessToNode(BindingState::instance(), imp->" . $function->signature->name . "(ec)))\n");
-        push(@implContentInternals, "        return v8::Handle<v8::Value>(v8Null(args.GetIsolate()));\n");
+        $code .= "    if (!BindingSecurity::shouldAllowAccessToNode(BindingState::instance(), imp->" . $function->signature->name . "(ec)))\n";
+        $code .= "        return v8::Handle<v8::Value>(v8Null(args.GetIsolate()));\n";
 END
     }
 
     my ($parameterCheckString, $paramIndex, %replacements) = GenerateParametersCheck($function, $interfaceName, $forMainWorldSuffix);
-    push(@implContentInternals, $parameterCheckString);
+    $code .= $parameterCheckString;
 
     # Build the function call string.
-    push(@implContentInternals, GenerateFunctionCallString($function, $paramIndex, "    ", $interfaceName, $forMainWorldSuffix, %replacements));
+    $code .= GenerateFunctionCallString($function, $paramIndex, "    ", $interfaceName, $forMainWorldSuffix, %replacements);
 
     if ($raisesExceptions) {
-        push(@implContentInternals, "    }\n");
-        push(@implContentInternals, "    fail:\n");
-        push(@implContentInternals, "    return setDOMException(ec, args.GetIsolate());\n");
+        $code .= "    }\n";
+        $code .= "    fail:\n";
+        $code .= "    return setDOMException(ec, args.GetIsolate());\n";
     }
 
-    push(@implContentInternals, "}\n\n");
-    push(@implContentInternals, "#endif // ${conditionalString}\n\n") if $conditionalString;
+    $code .= "}\n\n";
+    $code .= "#endif // ${conditionalString}\n\n" if $conditionalString;
+    AddToImplContentInternals($code);
 }
 
 sub GenerateCallWith
 {
     my $callWith = shift;
-    return () unless $callWith;
-    my $outputArray = shift;
+    return ([], "") unless $callWith;
     my $indent = shift;
     my $returnVoid = shift;
     my $function = shift;
+    my $code = "";
 
     my @callWithArgs;
     if ($codeGenerator->ExtendedAttributeContains($callWith, "ScriptState")) {
-        push(@$outputArray, $indent . "ScriptState* currentState = ScriptState::current();\n");
-        push(@$outputArray, $indent . "if (!currentState)\n");
-        push(@$outputArray, $indent . "    return" . ($returnVoid ? "" : " v8Undefined()") . ";\n");
-        push(@$outputArray, $indent . "ScriptState& state = *currentState;\n");
+        $code .= $indent . "ScriptState* currentState = ScriptState::current();\n";
+        $code .= $indent . "if (!currentState)\n";
+        $code .= $indent . "    return" . ($returnVoid ? "" : " v8Undefined()") . ";\n";
+        $code .= $indent . "ScriptState& state = *currentState;\n";
         push(@callWithArgs, "&state");
     }
     if ($codeGenerator->ExtendedAttributeContains($callWith, "ScriptExecutionContext")) {
-        push(@$outputArray, $indent . "ScriptExecutionContext* scriptContext = getScriptExecutionContext();\n");
+        $code .= $indent . "ScriptExecutionContext* scriptContext = getScriptExecutionContext();\n";
         push(@callWithArgs, "scriptContext");
     }
     if ($function and $codeGenerator->ExtendedAttributeContains($callWith, "ScriptArguments")) {
-        push(@$outputArray, $indent . "RefPtr<ScriptArguments> scriptArguments(createScriptArguments(args, " . @{$function->parameters} . "));\n");
+        $code .= $indent . "RefPtr<ScriptArguments> scriptArguments(createScriptArguments(args, " . @{$function->parameters} . "));\n";
         push(@callWithArgs, "scriptArguments.release()");
         AddToImplIncludes("ScriptArguments.h");
         AddToImplIncludes("ScriptCallStackFactory.h");
     }
-    return @callWithArgs;
+    return ([@callWithArgs], $code);
 }
 
 sub GenerateArgumentsCountCheck
@@ -1814,7 +1947,7 @@ sub GenerateArgumentsCountCheck
     my $numMandatoryParams = 0;
     my $allowNonOptional = 1;
     foreach my $param (@{$function->parameters}) {
-        if ($param->extendedAttributes->{"Optional"} or $param->isVariadic) {
+        if ($param->isOptional or $param->isVariadic) {
             $allowNonOptional = 0;
         } else {
             die "An argument must not be declared to be optional unless all subsequent arguments to the operation are also optional." if !$allowNonOptional;
@@ -1858,11 +1991,10 @@ sub GenerateParametersCheck
     foreach my $parameter (@{$function->parameters}) {
         my $nativeType = GetNativeTypeFromSignature($parameter, $paramIndex);
 
-        # Optional arguments with [Optional] should generate an early call with fewer arguments.
+        # Optional arguments without [Default=...] should generate an early call with fewer arguments.
         # Optional arguments with [Optional=...] should not generate the early call.
         # Optional Dictionary arguments always considered to have default of empty dictionary.
-        my $optional = $parameter->extendedAttributes->{"Optional"};
-        if ($optional && $optional ne "DefaultIsUndefined" && $optional ne "DefaultIsNullString" && $nativeType ne "Dictionary" && !$parameter->extendedAttributes->{"Callback"}) {
+        if ($parameter->isOptional && !$parameter->extendedAttributes->{"Default"} && $nativeType ne "Dictionary" && !$parameter->extendedAttributes->{"Callback"}) {
             $parameterCheckString .= "    if (args.Length() <= $paramIndex) {\n";
             my $functionCall = GenerateFunctionCallString($function, $paramIndex, "    " x 2, $interfaceName, $forMainWorldSuffix, %replacements);
             $parameterCheckString .= $functionCall;
@@ -1870,7 +2002,8 @@ sub GenerateParametersCheck
         }
 
         my $parameterDefaultPolicy = "DefaultIsUndefined";
-        if ($optional and $optional eq "DefaultIsNullString") {
+        my $default = defined $parameter->extendedAttributes->{"Default"} ? $parameter->extendedAttributes->{"Default"} : "";
+        if ($parameter->isOptional and $default eq "NullString") {
             $parameterDefaultPolicy = "DefaultIsNullString";
         }
 
@@ -1885,7 +2018,7 @@ sub GenerateParametersCheck
         if ($parameter->extendedAttributes->{"Callback"}) {
             my $v8InterfaceName = "V8" . $parameter->type;
             AddToImplIncludes("$v8InterfaceName.h");
-            if ($optional) {
+            if ($parameter->isOptional) {
                 $parameterCheckString .= "    RefPtr<" . $parameter->type . "> $parameterName;\n";
                 $parameterCheckString .= "    if (args.Length() > $paramIndex && !args[$paramIndex]->IsNull() && !args[$paramIndex]->IsUndefined()) {\n";
                 $parameterCheckString .= "        if (!args[$paramIndex]->IsFunction())\n";
@@ -1966,7 +2099,8 @@ sub GenerateParametersCheck
                 $parameterCheckString .= "    V8TRYCATCH(Vector<$nativeElementType>, $parameterName, toNativeArguments<$nativeElementType>(args, $paramIndex));\n";
             }
         } elsif ($nativeType =~ /^V8StringResource/) {
-            my $value = JSValueToNative($parameter, $optional && $optional eq "DefaultIsNullString" ? "argumentOrNull(args, $paramIndex)" : "args[$paramIndex]", "args.GetIsolate()");
+            my $default = defined $parameter->extendedAttributes->{"Default"} ? $parameter->extendedAttributes->{"Default"} : "";
+            my $value = JSValueToNative($parameter, $parameter->isOptional && $default eq "NullString" ? "argumentOrNull(args, $paramIndex)" : "args[$paramIndex]", "args.GetIsolate()");
             $parameterCheckString .= "    " . ConvertToV8StringResource($parameter, $nativeType, $parameterName, $value) . "\n";
             if ($codeGenerator->IsEnumType($parameter->type)) {
                 my @enumValues = $codeGenerator->ValidEnumValues($parameter->type);
@@ -1994,7 +2128,8 @@ sub GenerateParametersCheck
                     $parameterCheckString .= "        return throwTypeError(0, args.GetIsolate());\n";
                 }
             }
-            my $value = JSValueToNative($parameter, $optional && $optional eq "DefaultIsNullString" ? "argumentOrNull(args, $paramIndex)" : "args[$paramIndex]", "args.GetIsolate()");
+            my $default = defined $parameter->extendedAttributes->{"Default"} ? $parameter->extendedAttributes->{"Default"} : "";
+            my $value = JSValueToNative($parameter, $parameter->isOptional && $default eq "NullString" ? "argumentOrNull(args, $paramIndex)" : "args[$paramIndex]", "args.GetIsolate()");
             if ($parameter->extendedAttributes->{"EnforceRange"}) {
                 $parameterCheckString .= "    V8TRYCATCH_WITH_TYPECHECK($nativeType, $parameterName, $value, args.GetIsolate());\n";
             } else {
@@ -2023,7 +2158,8 @@ sub GenerateOverloadedConstructorCallback
     my $interface = shift;
     my $interfaceName = $interface->name;
 
-    push(@implContentInternals, <<END);
+    my $code = "";
+    $code .= <<END;
 static v8::Handle<v8::Value> constructor(const v8::Arguments& args)
 {
 END
@@ -2032,17 +2168,18 @@ END
         my $name = "constructor" . $constructor->{overloadedIndex};
         my ($numMandatoryParams, $parametersCheck) = GenerateFunctionParametersCheck($constructor);
         $leastNumMandatoryParams = $numMandatoryParams if ($numMandatoryParams < $leastNumMandatoryParams);
-        push(@implContentInternals, "    if ($parametersCheck)\n");
-        push(@implContentInternals, "        return ${interfaceName}V8Internal::${name}(args);\n");
+        $code .= "    if ($parametersCheck)\n";
+        $code .= "        return ${interfaceName}V8Internal::${name}(args);\n";
     }
     if ($leastNumMandatoryParams >= 1) {
-        push(@implContentInternals, "    if (args.Length() < $leastNumMandatoryParams)\n");
-        push(@implContentInternals, "        return throwNotEnoughArgumentsError(args.GetIsolate());\n");
+        $code .= "    if (args.Length() < $leastNumMandatoryParams)\n";
+        $code .= "        return throwNotEnoughArgumentsError(args.GetIsolate());\n";
     }
-    push(@implContentInternals, <<END);
+    $code .= <<END;
     return throwTypeError(0, args.GetIsolate());
 END
-    push(@implContentInternals, "}\n\n");
+    $code .= "}\n\n";
+    AddToImplContentInternals($code);
 }
 
 sub GenerateSingleConstructorCallback
@@ -2070,29 +2207,29 @@ sub GenerateSingleConstructorCallback
 
     my @beforeArgumentList;
     my @afterArgumentList;
-    push(@implContentInternals, <<END);
+    my $code = "";
+    $code .= <<END;
 static v8::Handle<v8::Value> constructor${overloadedIndexString}(const v8::Arguments& args)
 {
 END
 
     if ($function->{overloadedIndex} == 0) {
-        push(@implContentInternals, GenerateArgumentsCountCheck($function, $interface));
+        $code .= GenerateArgumentsCountCheck($function, $interface);
     }
 
     if ($raisesExceptions) {
         AddToImplIncludes("ExceptionCode.h");
-        push(@implContentInternals, "\n");
-        push(@implContentInternals, "    ExceptionCode ec = 0;\n");
+        $code .= "\n";
+        $code .= "    ExceptionCode ec = 0;\n";
     }
 
-    # FIXME: Currently [Constructor(...)] does not yet support [Optional] arguments.
-    # It just supports [Optional=DefaultIsUndefined] or [Optional=DefaultIsNullString].
+    # FIXME: Currently [Constructor(...)] does not yet support optional arguments without [Default=...]
     my ($parameterCheckString, $paramIndex, %replacements) = GenerateParametersCheck($function, $interfaceName, "");
-    push(@implContentInternals, $parameterCheckString);
+    $code .= $parameterCheckString;
 
     if ($interface->extendedAttributes->{"CallWith"} && $interface->extendedAttributes->{"CallWith"} eq "ScriptExecutionContext") {
         push(@beforeArgumentList, "context");
-        push(@implContentInternals, <<END);
+        $code .= <<END;
 
     ScriptExecutionContext* context = getScriptExecutionContext();
 END
@@ -2115,28 +2252,53 @@ END
     }
 
     my $argumentString = join(", ", @beforeArgumentList, @argumentList, @afterArgumentList);
-    push(@implContentInternals, "\n");
-    push(@implContentInternals, "    RefPtr<${interfaceName}> impl = ${interfaceName}::create(${argumentString});\n");
-    push(@implContentInternals, "    v8::Handle<v8::Object> wrapper = args.Holder();\n");
+    $code .= "\n";
+    $code .= "    RefPtr<${interfaceName}> impl = ${interfaceName}::create(${argumentString});\n";
+    $code .= "    v8::Handle<v8::Object> wrapper = args.Holder();\n";
 
     if ($interface->extendedAttributes->{"RaisesException"}) {
-        push(@implContentInternals, "    if (ec)\n");
-        push(@implContentInternals, "        goto fail;\n");
+        $code .= "    if (ec)\n";
+        $code .= "        goto fail;\n";
     }
 
-    push(@implContentInternals, <<END);
+    $code .= <<END;
 
     V8DOMWrapper::associateObjectWithWrapper(impl.release(), &V8${interfaceName}::info, wrapper, args.GetIsolate(), WrapperConfiguration::Dependent);
     return wrapper;
 END
 
     if ($raisesExceptions) {
-        push(@implContentInternals, "    fail:\n");
-        push(@implContentInternals, "    return setDOMException(ec, args.GetIsolate());\n");
+        $code .= "    fail:\n";
+        $code .= "    return setDOMException(ec, args.GetIsolate());\n";
     }
 
-    push(@implContentInternals, "}\n");
-    push(@implContentInternals, "\n");
+    $code .= "}\n";
+    $code .= "\n";
+    AddToImplContentInternals($code);
+}
+
+# The Web IDL specification states that Interface objects for interfaces MUST have a property named
+# "length" that returns the length of the shortest argument list of the entries in the effective
+# overload set for constructors. In other words, use the lowest number of mandatory arguments among
+# all constructors.
+sub GetInterfaceLength
+{
+    my $interface = shift;
+
+    my $leastNumMandatoryParams = 0;
+    if ($codeGenerator->IsConstructorTemplate($interface, "Event") || $codeGenerator->IsConstructorTemplate($interface, "TypedArray")) {
+        $leastNumMandatoryParams = 1;
+    } elsif ($interface->extendedAttributes->{"Constructor"} || $interface->extendedAttributes->{"CustomConstructor"}) {
+        my @constructors = @{$interface->constructors};
+        my @customConstructors = @{$interface->customConstructors};
+        $leastNumMandatoryParams = 255;
+        foreach my $constructor (@constructors, @customConstructors) {
+            my ($numMandatoryParams, $parametersCheck) = GenerateFunctionParametersCheck($constructor);
+            $leastNumMandatoryParams = $numMandatoryParams if ($numMandatoryParams < $leastNumMandatoryParams);
+        }
+    }
+
+    return $leastNumMandatoryParams;
 }
 
 sub GenerateConstructorCallback
@@ -2144,16 +2306,18 @@ sub GenerateConstructorCallback
     my $interface = shift;
 
     my $interfaceName = $interface->name;
-    push(@implContent, "v8::Handle<v8::Value> V8${interfaceName}::constructorCallback(const v8::Arguments& args)\n");
-    push(@implContent, "{\n");
-    push(@implContent, GenerateFeatureObservation($interface->extendedAttributes->{"MeasureAs"}));
-    push(@implContent, GenerateConstructorHeader());
+    my $code = "";
+    $code .= "v8::Handle<v8::Value> V8${interfaceName}::constructorCallback(const v8::Arguments& args)\n";
+    $code .= "{\n";
+    $code .= GenerateFeatureObservation($interface->extendedAttributes->{"MeasureAs"});
+    $code .= GenerateConstructorHeader();
     if (HasCustomConstructor($interface)) {
-        push(@implContent, "    return V8${interfaceName}::constructorCustom(args);\n");
+        $code .= "    return V8${interfaceName}::constructorCustom(args);\n";
     } else {
-        push(@implContent, "    return ${interfaceName}V8Internal::constructor(args);\n");
+        $code .= "    return ${interfaceName}V8Internal::constructor(args);\n";
     }
-    push(@implContent, "}\n\n");
+    $code .= "}\n\n";
+    AddToImplContent($code);
 }
 
 sub GenerateConstructor
@@ -2177,11 +2341,9 @@ sub GenerateEventConstructor
     my $interfaceName = $interface->name;
 
     AddToImplIncludes("Dictionary.h");
-    push(@implContentInternals, <<END);
+    AddToImplContentInternals(<<END);
 static v8::Handle<v8::Value> constructor(const v8::Arguments& args)
 {
-END
-    push(@implContentInternals, <<END);
     if (args.Length() < 1)
         return throwNotEnoughArgumentsError(args.GetIsolate());
 
@@ -2201,13 +2363,14 @@ END
 }
 END
 
-    push(@implContent, <<END);
+    my $code = "";
+    $code .= <<END;
 bool fill${interfaceName}Init(${interfaceName}Init& eventInit, const Dictionary& options)
 {
 END
 
     foreach my $interfaceBase (@{$interface->parents}) {
-        push(@implContent, <<END);
+        $code .= <<END;
     if (!fill${interfaceBase}Init(eventInit, options))
         return false;
 
@@ -2218,15 +2381,16 @@ END
         my $attribute = @{$interface->attributes}[$index];
         if ($attribute->signature->extendedAttributes->{"InitializedByEventConstructor"}) {
             my $attributeName = $attribute->signature->name;
-            push(@implContent, "    options.get(\"$attributeName\", eventInit.$attributeName);\n");
+            $code .= "    options.get(\"$attributeName\", eventInit.$attributeName);\n";
         }
     }
 
-    push(@implContent, <<END);
+    $code .= <<END;
     return true;
 }
 
 END
+    AddToImplContent($code);
 }
 
 sub GenerateTypedArrayConstructor
@@ -2237,7 +2401,7 @@ sub GenerateTypedArrayConstructor
     my $type = $interface->extendedAttributes->{"TypedArray"};
     AddToImplIncludes("V8ArrayBufferViewCustom.h");
 
-    push(@implContentInternals, <<END);
+    AddToImplContentInternals(<<END);
 static v8::Handle<v8::Value> constructor(const v8::Arguments& args)
 {
     return constructWebGLArray<$interfaceName, V8${interfaceName}, $type>(args, &V8${interfaceName}::info, $viewType);
@@ -2281,16 +2445,20 @@ sub GenerateNamedConstructor
     }
 
     AddToImplIncludes("Frame.h");
-    push(@implContent, <<END);
+    AddToImplContent(<<END);
 WrapperTypeInfo ${v8InterfaceName}Constructor::info = { ${v8InterfaceName}Constructor::GetTemplate, ${v8InterfaceName}::derefObject, $toActiveDOMObject, $toEventTarget, 0, ${v8InterfaceName}::installPerContextPrototypeProperties, 0, WrapperTypeObjectPrototype };
 
+END
+
+    my $code = "";
+    $code .= <<END;
 static v8::Handle<v8::Value> ${v8InterfaceName}ConstructorCallback(const v8::Arguments& args)
 {
     ${maybeObserveFeature}
 END
-    push(@implContent, GenerateConstructorHeader());
+    $code .= GenerateConstructorHeader();
     AddToImplIncludes("V8Document.h");
-    push(@implContent, <<END);
+    $code .= <<END;
     Document* document = currentDocument(BindingState::instance());
 
     // Make sure the document is added to the DOM Node map. Otherwise, the ${interfaceName} instance
@@ -2299,16 +2467,16 @@ END
 
 END
 
-    push(@implContent, GenerateArgumentsCountCheck($function, $interface));
+    $code .= GenerateArgumentsCountCheck($function, $interface);
 
     if ($raisesExceptions) {
         AddToImplIncludes("ExceptionCode.h");
-        push(@implContent, "\n");
-        push(@implContent, "    ExceptionCode ec = 0;\n");
+        $code .= "\n";
+        $code .= "    ExceptionCode ec = 0;\n";
     }
 
     my ($parameterCheckString, $paramIndex, %replacements) = GenerateParametersCheck($function, $interfaceName);
-    push(@implContent, $parameterCheckString);
+    $code .= $parameterCheckString;
 
     push(@beforeArgumentList, "document");
 
@@ -2329,29 +2497,30 @@ END
     }
 
     my $argumentString = join(", ", @beforeArgumentList, @argumentList, @afterArgumentList);
-    push(@implContent, "\n");
-    push(@implContent, "    RefPtr<${interfaceName}> impl = ${interfaceName}::createForJSConstructor(${argumentString});\n");
-    push(@implContent, "    v8::Handle<v8::Object> wrapper = args.Holder();\n");
+    $code .= "\n";
+    $code .= "    RefPtr<${interfaceName}> impl = ${interfaceName}::createForJSConstructor(${argumentString});\n";
+    $code .= "    v8::Handle<v8::Object> wrapper = args.Holder();\n";
 
     if ($interface->extendedAttributes->{"RaisesException"}) {
-        push(@implContent, "    if (ec)\n");
-        push(@implContent, "        goto fail;\n");
+        $code .= "    if (ec)\n";
+        $code .= "        goto fail;\n";
     }
 
-    push(@implContent, <<END);
+    $code .= <<END;
 
     V8DOMWrapper::associateObjectWithWrapper(impl.release(), &${v8InterfaceName}Constructor::info, wrapper, args.GetIsolate(), WrapperConfiguration::Dependent);
     return wrapper;
 END
 
     if ($raisesExceptions) {
-        push(@implContent, "    fail:\n");
-        push(@implContent, "    return setDOMException(ec, args.GetIsolate());\n");
+        $code .= "    fail:\n";
+        $code .= "    return setDOMException(ec, args.GetIsolate());\n";
     }
 
-    push(@implContent, "}\n");
+    $code .= "}\n";
+    AddToImplContent($code);
 
-    push(@implContent, <<END);
+    $code = <<END;
 
 v8::Persistent<v8::FunctionTemplate> ${v8InterfaceName}Constructor::GetTemplate(v8::Isolate* isolate, WrapperWorldType currentWorldType)
 {
@@ -2372,6 +2541,7 @@ v8::Persistent<v8::FunctionTemplate> ${v8InterfaceName}Constructor::GetTemplate(
 }
 
 END
+    AddToImplContent($code);
 }
 
 sub GenerateConstructorHeader
@@ -2391,14 +2561,18 @@ sub GenerateBatchedAttributeData
 {
     my $interface = shift;
     my $attributes = shift;
+    my $code = "";
     my $interfaceName = $interface->name;
 
     foreach my $attribute (@$attributes) {
         my $conditionalString = $codeGenerator->GenerateConditionalString($attribute->signature);
-        push(@implContent, "#if ${conditionalString}\n") if $conditionalString;
-        GenerateSingleBatchedAttribute($interfaceName, $attribute, ",", "");
-        push(@implContent, "#endif // ${conditionalString}\n") if $conditionalString;
+        my $subCode = "";
+        $subCode .= "#if ${conditionalString}\n" if $conditionalString;
+        $subCode .= GenerateSingleBatchedAttribute($interfaceName, $attribute, ",", "");
+        $subCode .= "#endif // ${conditionalString}\n" if $conditionalString;
+        $code .= $subCode;
     }
+    return $code;
 }
 
 sub GenerateSingleBatchedAttribute
@@ -2407,6 +2581,7 @@ sub GenerateSingleBatchedAttribute
     my $attribute = shift;
     my $delimiter = shift;
     my $indent = shift;
+    my $code = "";
     my $attrName = $attribute->signature->name;
     my $attrExt = $attribute->signature->extendedAttributes;
 
@@ -2496,8 +2671,9 @@ sub GenerateSingleBatchedAttribute
     my $commentInfo = "Attribute '$attrName' (Type: '" . $attribute->type .
                       "' ExtAttr: '" . join(' ', keys(%{$attrExt})) . "')";
 
-    push(@implContent, $indent . "    \/\/ $commentInfo\n");
-    push(@implContent, $indent . "    {\"$attrName\", $getter, $setter, $getterForMainWorld, $setterForMainWorld, $data, $accessControl, static_cast<v8::PropertyAttribute>($propAttr), $on_proto}" . $delimiter . "\n");
+    $code .= $indent . "    \/\/ $commentInfo\n";
+    $code .= $indent . "    {\"$attrName\", $getter, $setter, $getterForMainWorld, $setterForMainWorld, $data, $accessControl, static_cast<v8::PropertyAttribute>($propAttr), $on_proto}" . $delimiter . "\n";
+    return $code;
 }
 
 sub IsStandardFunction
@@ -2523,6 +2699,7 @@ sub GenerateNonStandardFunction
 {
     my $interface = shift;
     my $function = shift;
+    my $code = "";
 
     my $interfaceName = $interface->name;
     my $attrExt = $function->signature->extendedAttributes;
@@ -2563,12 +2740,12 @@ sub GenerateNonStandardFunction
         # and then accessed on a different domain we do not return the underlying value but instead
         # return a new copy of the original function. This is achieved by storing the changed value
         # as hidden property.
-        push(@implContent, <<END);
+        $code .= <<END;
 
     // $commentInfo
     ${conditional}$template->SetAccessor(v8::String::NewSymbol("$name"), ${interfaceName}V8Internal::${name}AttrGetterCallback, ${interfaceName}V8Internal::${interfaceName}DomainSafeFunctionSetter, v8Undefined(), v8::ALL_CAN_READ, static_cast<v8::PropertyAttribute>($property_attributes));
 END
-        return;
+        return $code;
     }
 
     my $signature = "defaultSignature";
@@ -2578,7 +2755,7 @@ END
 
     if (RequiresCustomSignature($function)) {
         $signature = "${name}Signature";
-        push(@implContent, "\n    // Custom Signature '$name'\n", CreateCustomSignature($function));
+        $code .= "\n    // Custom Signature '$name'\n" . CreateCustomSignature($function);
     }
 
     if ($property_attributes eq "v8::DontDelete") {
@@ -2592,51 +2769,52 @@ END
     }
 
     my $conditionalString = $codeGenerator->GenerateConditionalString($function->signature);
-    push(@implContent, "#if ${conditionalString}\n") if $conditionalString;
+    $code .= "#if ${conditionalString}\n" if $conditionalString;
     if ($function->signature->extendedAttributes->{"PerWorldBindings"}) {
-        push(@implContent, "    if (currentWorldType == MainWorld) {\n");
-        push(@implContent, "        ${conditional}$template->Set(v8::String::NewSymbol(\"$name\"), v8::FunctionTemplate::New(${interfaceName}V8Internal::${name}MethodCallbackForMainWorld, v8Undefined(), ${signature})$property_attributes);\n");
-        push(@implContent, "    } else {\n");
-        push(@implContent, "        ${conditional}$template->Set(v8::String::NewSymbol(\"$name\"), v8::FunctionTemplate::New(${interfaceName}V8Internal::${name}MethodCallback, v8Undefined(), ${signature})$property_attributes);\n");
-        push(@implContent, "    }\n");
+        $code .= "    if (currentWorldType == MainWorld) {\n";
+        $code .= "        ${conditional}$template->Set(v8::String::NewSymbol(\"$name\"), v8::FunctionTemplate::New(${interfaceName}V8Internal::${name}MethodCallbackForMainWorld, v8Undefined(), ${signature})$property_attributes);\n";
+        $code .= "    } else {\n";
+        $code .= "        ${conditional}$template->Set(v8::String::NewSymbol(\"$name\"), v8::FunctionTemplate::New(${interfaceName}V8Internal::${name}MethodCallback, v8Undefined(), ${signature})$property_attributes);\n";
+        $code .= "    }\n";
     } else {
-        push(@implContent, "    ${conditional}$template->Set(v8::String::NewSymbol(\"$name\"), v8::FunctionTemplate::New(${interfaceName}V8Internal::${name}MethodCallback, v8Undefined(), ${signature})$property_attributes);\n");
+        $code .= "    ${conditional}$template->Set(v8::String::NewSymbol(\"$name\"), v8::FunctionTemplate::New(${interfaceName}V8Internal::${name}MethodCallback, v8Undefined(), ${signature})$property_attributes);\n";
     }
-    push(@implContent, "#endif // ${conditionalString}\n") if $conditionalString;
+    $code .= "#endif // ${conditionalString}\n" if $conditionalString;
+    return $code;
 }
 
-sub GenerateImplementationIndexer
+sub GenerateImplementationIndexedProperty
 {
     my $interface = shift;
     my $indexer = shift;
     my $interfaceName = $interface->name;
     my $v8InterfaceName = "V8$interfaceName";
 
-    # FIXME: Figure out what NumericIndexedGetter is really supposed to do. Right now, it's only set on WebGL-related files.
-    my $hasCustomSetter = $interface->extendedAttributes->{"CustomIndexedSetter"} && !$interface->extendedAttributes->{"NumericIndexedGetter"};
-    my $hasGetter = $interface->extendedAttributes->{"IndexedGetter"} || $interface->extendedAttributes->{"CustomGetOwnPropertySlot"};
+    my $hasCustomIndexedSetter = $interface->extendedAttributes->{"CustomIndexedSetter"};
+    my $hasIndexedGetter = $interface->extendedAttributes->{"IndexedGetter"} || $interface->extendedAttributes->{"CustomIndexedGetter"};
 
     # FIXME: Investigate and remove this nastinesss. In V8, named property handling and indexer handling are apparently decoupled,
     # which means that object[X] where X is a number doesn't reach named property indexer. So we need to provide
     # simplistic, mirrored indexer handling in addition to named property handling.
     my $isSpecialCase = exists $indexerSpecialCases{$interfaceName};
     if ($isSpecialCase) {
-        $hasGetter = 1;
+        $hasIndexedGetter = 1;
         if ($interface->extendedAttributes->{"CustomNamedSetter"}) {
-            $hasCustomSetter = 1;
+            $hasCustomIndexedSetter = 1;
         }
     }
 
+    # FIXME: Remove the special cases. Interfaces that have indexedPropertyGetter should have indexedPropertyEnumerator.
     my $hasEnumerator = !$isSpecialCase && $codeGenerator->InheritsInterface($interface, "Node");
 
     # FIXME: Find a way to not have to special-case HTMLOptionsCollection.
     if ($interfaceName eq "HTMLOptionsCollection") {
         $hasEnumerator = 1;
-        $hasGetter = 1;
+        $hasIndexedGetter = 1;
     }
 
-    if (!$hasGetter) {
-        return;
+    if (!$hasIndexedGetter) {
+        return "";
     }
 
     AddToImplIncludes("V8Collection.h");
@@ -2647,32 +2825,8 @@ sub GenerateImplementationIndexer
 
     my $indexerType = $indexer ? $indexer->type : 0;
 
-    # FIXME: Remove this once toV8 helper methods are implemented (see https://bugs.webkit.org/show_bug.cgi?id=32563).
-    if ($interfaceName eq "WebKitCSSKeyframesRule") {
-        $indexerType = "WebKitCSSKeyframeRule";
-    }
-
-    if ($indexerType && !$hasCustomSetter) {
-        if ($indexerType eq "DOMString") {
-            my $conversion = $indexer->extendedAttributes->{"TreatReturnedNullStringAs"};
-            if ($conversion && $conversion eq "Null") {
-                push(@implContent, <<END);
-    setCollectionStringOrUndefinedIndexedGetter<${interfaceName}>(desc);
-END
-            } else {
-                push(@implContent, <<END);
-    setCollectionStringIndexedGetter<${interfaceName}>(desc);
-END
-            }
-        } else {
-            push(@implContent, <<END);
-    setCollectionIndexedGetter<${interfaceName}, ${indexerType}>(desc);
-END
-            # Include the header for this indexer type, because setCollectionIndexedGetter() requires toV8() for this type.
-            AddToImplIncludes("V8${indexerType}.h");
-        }
-
-        return;
+    if ($indexerType && !$hasCustomIndexedSetter) {
+        $hasEnumerator = 1;
     }
 
     my $hasDeleter = $interface->extendedAttributes->{"CustomDeleteProperty"};
@@ -2686,19 +2840,62 @@ END
         $setOn = "Prototype";
         $hasDeleter = 0;
     }
+    # FIXME: Implement V8DataTransferItemList::indexedPropertyDeleter
+    if ($interfaceName eq "DataTransferItemList") {
+        $hasDeleter = 0;
+    }
 
-    push(@implContent, "    desc->${setOn}Template()->SetIndexedPropertyHandler(${v8InterfaceName}::indexedPropertyGetter");
-    push(@implContent, $hasCustomSetter ? ", ${v8InterfaceName}::indexedPropertySetter" : ", 0");
-    push(@implContent, ", 0"); # IndexedPropertyQuery -- not being used at the moment.
-    push(@implContent, $hasDeleter ? ", ${v8InterfaceName}::indexedPropertyDeleter" : ", 0");
-    push(@implContent, ", nodeCollectionIndexedPropertyEnumerator<${interfaceName}>") if $hasEnumerator;
-    push(@implContent, ");\n");
+    my $code = "";
+    $code .= "    desc->${setOn}Template()->SetIndexedPropertyHandler(${v8InterfaceName}::indexedPropertyGetter";
+    $code .= $hasCustomIndexedSetter ? ", ${v8InterfaceName}::indexedPropertySetter" : ", 0";
+    $code .= ", 0"; # IndexedPropertyQuery -- not being used at the moment.
+    $code .= $hasDeleter ? ", ${v8InterfaceName}::indexedPropertyDeleter" : ", 0";
+    $code .= ", nodeCollectionIndexedPropertyEnumerator<${interfaceName}>" if $hasEnumerator;
+    $code .= ");\n";
+
+    if($interface->extendedAttributes->{"IndexedGetter"}) {
+        # FIXME: add item() method to WebKitCSSKeyframesRule.idl or remove [IndexedGetter] from WebKitCSSKeyframesRule.idl
+        # Currently indexer type is hard coded because it can not be obtained from IDL.
+        if ($interfaceName eq "WebKitCSSKeyframesRule") {
+            $indexerType = "WebKitCSSKeyframeRule";
+        }
+        my $jsValue = "";
+        my $nativeType = GetNativeType($indexerType);
+        my $isNull = "";
+
+        if ($codeGenerator->IsRefPtrType($indexerType)) {
+            $isNull = "!element";
+            if ($interfaceName eq "WebKitCSSKeyframesRule") {
+                $jsValue = "toV8(element.release(), info.Holder(), info.GetIsolate())";
+            } else {
+                $jsValue = NativeToJSValue($indexer, "element.release()", "info.Holder()", "info.GetIsolate()");
+            }
+        } else {
+            $isNull = "element.isNull()";
+            $jsValue = NativeToJSValue($indexer, "element", "info.Holder()", "info.GetIsolate()");
+        }
+
+        AddToImplContent(<<END);
+v8::Handle<v8::Value> ${v8InterfaceName}::indexedPropertyGetter(uint32_t index, const v8::AccessorInfo& info)
+{
+    ASSERT(V8DOMWrapper::maybeDOMWrapper(info.Holder()));
+    ${interfaceName}* collection = toNative(info.Holder());
+    $nativeType element = collection->item(index);
+    if ($isNull)
+        return v8Undefined();
+    return $jsValue;
+}
+END
+    }
+    return $code;
 }
 
 sub GenerateImplementationNamedPropertyGetter
 {
     my $interface = shift;
     my $namedPropertyGetter = shift;
+    my $subCode = "";
+
     my $interfaceName = $interface->name;
     my $v8InterfaceName = "V8$interfaceName";
 
@@ -2707,11 +2904,40 @@ sub GenerateImplementationNamedPropertyGetter
     }
 
     if ($interface->extendedAttributes->{"NamedGetter"}) {
+        die "$interfaceName: [NamedGetter] but no namedItem() method." if (!$namedPropertyGetter);
         AddToImplIncludes("V8Collection.h");
         my $type = $namedPropertyGetter->type;
-        push(@implContent, <<END);
-    setCollectionNamedGetter<${interfaceName}, ${type}>(desc);
+        $subCode .= <<END;
+    desc->InstanceTemplate()->SetNamedPropertyHandler(${v8InterfaceName}::namedPropertyGetter, 0, 0, 0, 0);
 END
+
+        my $code .= <<END;
+v8::Handle<v8::Value> ${v8InterfaceName}::namedPropertyGetter(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+{
+    if (!info.Holder()->GetRealNamedPropertyInPrototypeChain(name).IsEmpty())
+        return v8Undefined();
+    if (info.Holder()->HasRealNamedCallbackProperty(name))
+        return v8Undefined();
+
+    v8::Local<v8::Object> object = info.Holder();
+    v8::Handle<v8::Object> creationContext = info.Holder();
+    v8::Isolate* isolate = info.GetIsolate();
+
+    ASSERT(V8DOMWrapper::maybeDOMWrapper(object));
+    ASSERT(toWrapperTypeInfo(object) != &V8Node::info);
+    $interfaceName* collection = toNative(object);
+
+    AtomicString propertyName = toWebCoreAtomicStringWithNullCheck(name);
+    RefPtr<$type> element = collection->namedItem(propertyName);
+
+    if (!element)
+        return v8Undefined();
+
+    return toV8(element.release(), creationContext, isolate);
+}
+
+END
+        AddToImplContent($code);
     }
 
     my $hasCustomNamedGetter = $interface->extendedAttributes->{"CustomNamedGetter"};
@@ -2738,33 +2964,41 @@ END
             $hasEnumerator = 0;
         }
 
-        push(@implContent, "    desc->${setOn}Template()->SetNamedPropertyHandler(${v8InterfaceName}::namedPropertyGetter, ");
-        push(@implContent, $hasCustomNamedSetter ? "${v8InterfaceName}::namedPropertySetter, " : "0, ");
+        $subCode .= "    desc->${setOn}Template()->SetNamedPropertyHandler(${v8InterfaceName}::namedPropertyGetter, ";
+        $subCode .= $hasCustomNamedSetter ? "${v8InterfaceName}::namedPropertySetter, " : "0, ";
         # If there is a custom enumerator, there MUST be custom query to properly communicate property attributes.
-        push(@implContent, $hasEnumerator ? "${v8InterfaceName}::namedPropertyQuery, " : "0, ");
-        push(@implContent, $hasDeleter ? "${v8InterfaceName}::namedPropertyDeleter, " : "0, ");
-        push(@implContent, $hasEnumerator ? "${v8InterfaceName}::namedPropertyEnumerator" : "0");
-        push(@implContent, ");\n");
+        $subCode .= $hasEnumerator ? "${v8InterfaceName}::namedPropertyQuery, " : "0, ";
+        $subCode .= $hasDeleter ? "${v8InterfaceName}::namedPropertyDeleter, " : "0, ";
+        $subCode .= $hasEnumerator ? "${v8InterfaceName}::namedPropertyEnumerator" : "0";
+        $subCode .= ");\n";
     }
+
+    return $subCode;
 }
 
 sub GenerateImplementationCustomCall
 {
     my $interface = shift;
+    my $code = "";
+
     my $interfaceName = $interface->name;
 
     if ($interface->extendedAttributes->{"CustomCall"}) {
-        push(@implContent, "    desc->InstanceTemplate()->SetCallAsFunctionHandler(V8${interfaceName}::callAsFunctionCallback);\n");
+        $code .= "    desc->InstanceTemplate()->SetCallAsFunctionHandler(V8${interfaceName}::callAsFunctionCallback);\n";
     }
+    return $code;
 }
 
 sub GenerateImplementationMasqueradesAsUndefined
 {
     my $interface = shift;
+    my $code = "";
+
     if ($interface->extendedAttributes->{"MasqueradesAsUndefined"})
     {
-        push(@implContent, "    desc->InstanceTemplate()->MarkAsUndetectable();\n");
+        $code .= "    desc->InstanceTemplate()->MarkAsUndetectable();\n";
     }
+    return $code;
 }
 
 sub GenerateImplementation
@@ -2805,7 +3039,7 @@ sub GenerateImplementation
         last;
     }
 
-    push(@implContentInternals, <<END) if $vtableNameGnu;
+    AddToImplContentInternals(<<END) if $vtableNameGnu;
 #if ENABLE(BINDING_INTEGRITY)
 #if defined(OS_WIN)
 #pragma warning(disable: 4483)
@@ -2817,9 +3051,9 @@ extern "C" { extern void* ${vtableNameGnu}[]; }
 
 END
 
-    push(@implContentInternals, "namespace WebCore {\n\n");
+    AddToImplContentInternals("namespace WebCore {\n\n");
 
-    push(@implContentInternals, <<END) if $vtableNameGnu;
+    AddToImplContentInternals(<<END) if $vtableNameGnu;
 #if ENABLE(BINDING_INTEGRITY)
 // This checks if a DOM object that is about to be wrapped is valid.
 // Specifically, it checks that a vtable of the DOM object is equal to
@@ -2845,15 +3079,40 @@ inline void checkTypeOrDieTrying(${nativeType}* object)
 
 END
 
-
     my $parentClassInfo = $parentClass ? "&${parentClass}::info" : "0";
-
     my $WrapperTypePrototype = $interface->isException ? "WrapperTypeErrorPrototype" : "WrapperTypeObjectPrototype";
 
-    push(@implContentInternals, "WrapperTypeInfo ${v8InterfaceName}::info = { ${v8InterfaceName}::GetTemplate, ${v8InterfaceName}::derefObject, $toActiveDOMObject, $toEventTarget, $rootForGC, ${v8InterfaceName}::installPerContextPrototypeProperties, $parentClassInfo, $WrapperTypePrototype };\n\n");
-    push(@implContentInternals, "namespace ${interfaceName}V8Internal {\n\n");
+    if (!$codeGenerator->IsSVGTypeNeedingTearOff($interfaceName)) {
+        push(@implContentInternals, <<END);
+#if defined(OS_WIN)
+// In ScriptWrappable, the use of extern function prototypes inside templated static methods has an issue on windows.
+// These prototypes do not pick up the surrounding namespace, so drop out of WebCore as a workaround.
+} // namespace WebCore
+using WebCore::ScriptWrappable;
+using WebCore::${v8InterfaceName};
+END
+       push(@implContentInternals, <<END) if (GetNamespaceForInterface($interface) eq "WebCore");
+using WebCore::${interfaceName};
+END
+      push(@implContentInternals, <<END);
+#endif
+void initializeScriptWrappableForInterface(${interfaceName}* object)
+{
+    if (ScriptWrappable::wrapperCanBeStoredInObject(object))
+        ScriptWrappable::setTypeInfoInObject(object, &${v8InterfaceName}::info);
+}
+#if defined(OS_WIN)
+namespace WebCore {
+#endif
+END
+    }
 
-    push(@implContentInternals, "template <typename T> void V8_USE(T) { }\n\n");
+    my $code = "WrapperTypeInfo ${v8InterfaceName}::info = { ${v8InterfaceName}::GetTemplate, ${v8InterfaceName}::derefObject, $toActiveDOMObject, $toEventTarget, ";
+    $code .= "$rootForGC, ${v8InterfaceName}::installPerContextPrototypeProperties, $parentClassInfo, $WrapperTypePrototype };\n\n";
+    AddToImplContentInternals($code);
+
+    AddToImplContentInternals("namespace ${interfaceName}V8Internal {\n\n");
+    AddToImplContentInternals("template <typename T> void V8_USE(T) { }\n\n");
 
     my $hasConstructors = 0;
     my $hasReplaceable = 0;
@@ -2917,7 +3176,7 @@ END
 
     if ($interface->extendedAttributes->{"TypedArray"}) {
         my $viewType = GetTypeNameOfExternalTypedArray($interface);
-        push(@implContent, <<END);
+        AddToImplContent(<<END);
 v8::Handle<v8::Object> wrap($interfaceName* impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
 {
     ASSERT(impl);
@@ -3007,22 +3266,27 @@ END
     $attributes = \@normalAttributes;
     # Put the attributes that disallow shadowing on the shadow object.
     if (@disallowsShadowing) {
-        push(@implContent, "static const V8DOMConfiguration::BatchedAttribute shadowAttrs[] = {\n");
-        GenerateBatchedAttributeData($interface, \@disallowsShadowing);
-        push(@implContent, "};\n\n");
+        my $code = "";
+        $code .= "static const V8DOMConfiguration::BatchedAttribute shadowAttrs[] = {\n";
+        $code .= GenerateBatchedAttributeData($interface, \@disallowsShadowing);
+        $code .= "};\n\n";
+        AddToImplContent($code);
     }
 
     my $has_attributes = 0;
     if (@$attributes) {
         $has_attributes = 1;
-        push(@implContent, "static const V8DOMConfiguration::BatchedAttribute ${v8InterfaceName}Attrs[] = {\n");
-        GenerateBatchedAttributeData($interface, $attributes);
-        push(@implContent, "};\n\n");
+        my $code = "";
+        $code .= "static const V8DOMConfiguration::BatchedAttribute ${v8InterfaceName}Attrs[] = {\n";
+        $code .= GenerateBatchedAttributeData($interface, $attributes);
+        $code .= "};\n\n";
+        AddToImplContent($code);
     }
 
     # Setup table of standard callback functions
     my $num_callbacks = 0;
     my $has_callbacks = 0;
+    $code = "";
     foreach my $function (@normalFunctions) {
         # Only one table entry is needed for overloaded methods:
         next if $function->{overloadIndex} > 1;
@@ -3030,29 +3294,33 @@ END
         next if !IsStandardFunction($interface, $function);
         if (!$has_callbacks) {
             $has_callbacks = 1;
-            push(@implContent, "static const V8DOMConfiguration::BatchedMethod ${v8InterfaceName}Methods[] = {\n");
+            $code .= "static const V8DOMConfiguration::BatchedMethod ${v8InterfaceName}Methods[] = {\n";
         }
         my $name = $function->signature->name;
         my $methodForMainWorld = "0";
         if ($function->signature->extendedAttributes->{"PerWorldBindings"}) {
             $methodForMainWorld = "${interfaceName}V8Internal::${name}MethodCallbackForMainWorld";
         }
+        # numMandatoryParams is used to set the "length" property of the Function object.
+        my ($numMandatoryParams, $parametersCheck) = GenerateFunctionParametersCheck($function);
         my $conditionalString = $codeGenerator->GenerateConditionalString($function->signature);
-        push(@implContent, "#if ${conditionalString}\n") if $conditionalString;
-        push(@implContent, <<END);
-    {"$name", ${interfaceName}V8Internal::${name}MethodCallback, ${methodForMainWorld}},
+        $code .= "#if ${conditionalString}\n" if $conditionalString;
+        $code .= <<END;
+    {"$name", ${interfaceName}V8Internal::${name}MethodCallback, ${methodForMainWorld}, ${numMandatoryParams}},
 END
-        push(@implContent, "#endif\n") if $conditionalString;
+        $code .= "#endif\n" if $conditionalString;
         $num_callbacks++;
     }
-    push(@implContent, "};\n\n")  if $has_callbacks;
+    $code .= "};\n\n"  if $has_callbacks;
+    AddToImplContent($code);
 
     # Setup constants
     my $has_constants = 0;
     my @constantsEnabledAtRuntime;
+    $code = "";
     if (@{$interface->constants}) {
         $has_constants = 1;
-        push(@implContent, "static const V8DOMConfiguration::BatchedConstant ${v8InterfaceName}Consts[] = {\n");
+        $code .= "static const V8DOMConfiguration::BatchedConstant ${v8InterfaceName}Consts[] = {\n";
     }
     foreach my $constant (@{$interface->constants}) {
         my $name = $constant->name;
@@ -3068,22 +3336,23 @@ END
         } else {
             if ($conditional) {
                 my $conditionalString = $codeGenerator->GenerateConditionalStringFromAttributeValue($conditional);
-                push(@implContent, "#if ${conditionalString}\n");
+                $code .= "#if ${conditionalString}\n";
             }
             # If the value we're dealing with is a hex number, preprocess it into a signed integer
             # here, rather than running static_cast<signed int> in the generated code.
             if (substr($value, 0, 2) eq "0x") {
               $value = unpack('i', pack('I', hex($value)));
             }
-            push(@implContent, <<END);
+            $code .= <<END;
     {"${name}", $value},
 END
-            push(@implContent, "#endif\n") if $conditional;
+            $code .= "#endif\n" if $conditional;
         }
     }
     if ($has_constants) {
-        push(@implContent, "};\n\n");
-        push(@implContent, $codeGenerator->GenerateCompileTimeCheckForEnumsIfNeeded($interface));
+        $code .= "};\n\n";
+        $code .= join "", $codeGenerator->GenerateCompileTimeCheckForEnumsIfNeeded($interface);
+        AddToImplContent($code);
     }
 
     if (!HasCustomConstructor($interface)) {
@@ -3101,7 +3370,7 @@ END
         GenerateConstructorCallback($interface);
     }
 
-    push(@implContentInternals, "} // namespace ${interfaceName}V8Internal\n\n");
+    AddToImplContentInternals("} // namespace ${interfaceName}V8Internal\n\n");
 
     my $access_check = "";
     if ($interface->extendedAttributes->{"CheckSecurity"} && $interfaceName ne "DOMWindow") {
@@ -3111,7 +3380,7 @@ END
     # For the DOMWindow interface, generate the shadow object template
     # configuration method.
     if ($interfaceName eq "DOMWindow") {
-        push(@implContent, <<END);
+        AddToImplContent(<<END);
 static v8::Persistent<v8::ObjectTemplate> ConfigureShadowObjectTemplate(v8::Persistent<v8::ObjectTemplate> templ, v8::Isolate* isolate, WrapperWorldType currentWorldType)
 {
     V8DOMConfiguration::batchConfigureAttributes(templ, v8::Handle<v8::ObjectTemplate>(), shadowAttrs, WTF_ARRAY_LENGTH(shadowAttrs), isolate, currentWorldType);
@@ -3129,7 +3398,7 @@ END
     }
 
     # Generate the template configuration method
-    push(@implContent,  <<END);
+    $code =  <<END;
 static v8::Persistent<v8::FunctionTemplate> Configure${v8InterfaceName}Template(v8::Persistent<v8::FunctionTemplate> desc, v8::Isolate* isolate, WrapperWorldType currentWorldType)
 {
     desc->ReadOnlyPrototype();
@@ -3138,47 +3407,49 @@ static v8::Persistent<v8::FunctionTemplate> Configure${v8InterfaceName}Template(
 END
     if ($interface->extendedAttributes->{"EnabledAtRuntime"}) {
         my $enable_function = GetRuntimeEnableFunctionName($interface);
-        push(@implContent, <<END);
+        $code .= <<END;
     if (!${enable_function}())
         defaultSignature = V8DOMConfiguration::configureTemplate(desc, \"\", $parentClassTemplate, ${v8InterfaceName}::internalFieldCount, 0, 0, 0, 0, isolate, currentWorldType);
     else
 END
     }
-    push(@implContent,  <<END);
+    $code .=  <<END;
     defaultSignature = V8DOMConfiguration::configureTemplate(desc, \"${visibleInterfaceName}\", $parentClassTemplate, ${v8InterfaceName}::internalFieldCount,
 END
     # Set up our attributes if we have them
     if ($has_attributes) {
-        push(@implContent, <<END);
+        $code .= <<END;
         ${v8InterfaceName}Attrs, WTF_ARRAY_LENGTH(${v8InterfaceName}Attrs),
 END
     } else {
-        push(@implContent, <<END);
+        $code .= <<END;
         0, 0,
 END
     }
 
     if ($has_callbacks) {
-        push(@implContent, <<END);
+        $code .= <<END;
         ${v8InterfaceName}Methods, WTF_ARRAY_LENGTH(${v8InterfaceName}Methods), isolate, currentWorldType);
 END
     } else {
-        push(@implContent, <<END);
+        $code .= <<END;
         0, 0, isolate, currentWorldType);
 END
     }
 
     AddToImplIncludes("wtf/UnusedParam.h");
-    push(@implContent, <<END);
+    $code .= <<END;
     UNUSED_PARAM(defaultSignature); // In some cases, it will not be used.
 END
 
     if (IsConstructable($interface)) {
-        push(@implContent, "    desc->SetCallHandler(${v8InterfaceName}::constructorCallback);\n");
+        $code .= "    desc->SetCallHandler(${v8InterfaceName}::constructorCallback);\n";
+        my $interfaceLength = GetInterfaceLength($interface);
+        $code .= "    desc->SetLength(${interfaceLength});\n";
     }
 
     if ($access_check or @enabledAtRuntimeAttributes or @normalFunctions or $has_constants) {
-        push(@implContent,  <<END);
+        $code .=  <<END;
     v8::Local<v8::ObjectTemplate> instance = desc->InstanceTemplate();
     v8::Local<v8::ObjectTemplate> proto = desc->PrototypeTemplate();
     UNUSED_PARAM(instance); // In some cases, it will not be used.
@@ -3186,21 +3457,23 @@ END
 END
     }
 
-    push(@implContent,  "    $access_check\n");
+    if ($access_check) {
+        $code .=  "    $access_check\n";
+    }
 
     # Setup the enable-at-runtime attrs if we have them
     foreach my $runtime_attr (@enabledAtRuntimeAttributes) {
         my $enable_function = GetRuntimeEnableFunctionName($runtime_attr->signature);
         my $conditionalString = $codeGenerator->GenerateConditionalString($runtime_attr->signature);
-        push(@implContent, "\n#if ${conditionalString}\n") if $conditionalString;
-        push(@implContent, "    if (${enable_function}()) {\n");
-        push(@implContent, "        static const V8DOMConfiguration::BatchedAttribute attrData =\\\n");
-        GenerateSingleBatchedAttribute($interfaceName, $runtime_attr, ";", "    ");
-        push(@implContent, <<END);
+        $code .= "\n#if ${conditionalString}\n" if $conditionalString;
+        $code .= "    if (${enable_function}()) {\n";
+        $code .= "        static const V8DOMConfiguration::BatchedAttribute attrData =\\\n";
+        $code .= GenerateSingleBatchedAttribute($interfaceName, $runtime_attr, ";", "    ");
+        $code .= <<END;
         V8DOMConfiguration::configureAttribute(instance, proto, attrData, isolate, currentWorldType);
     }
 END
-        push(@implContent, "\n#endif // ${conditionalString}\n") if $conditionalString;
+        $code .= "\n#endif // ${conditionalString}\n" if $conditionalString;
     }
 
     # Setup the enable-at-runtime constants if we have them
@@ -3209,20 +3482,20 @@ END
         my $conditionalString = $codeGenerator->GenerateConditionalString($runtime_const);
         my $name = $runtime_const->name;
         my $value = $runtime_const->value;
-        push(@implContent, "\n#if ${conditionalString}\n") if $conditionalString;
-        push(@implContent, "    if (${enable_function}()) {\n");
-        push(@implContent, <<END);
+        $code .= "\n#if ${conditionalString}\n" if $conditionalString;
+        $code .= "    if (${enable_function}()) {\n";
+        $code .= <<END;
         static const V8DOMConfiguration::BatchedConstant constData = {"${name}", static_cast<signed int>(${value})};
         V8DOMConfiguration::batchConfigureConstants(desc, proto, &constData, 1, isolate);
 END
-        push(@implContent, "    }\n");
-        push(@implContent, "\n#endif // ${conditionalString}\n") if $conditionalString;
+        $code .= "    }\n";
+        $code .= "\n#endif // ${conditionalString}\n" if $conditionalString;
     }
 
-    GenerateImplementationIndexer($interface, $indexer);
-    GenerateImplementationNamedPropertyGetter($interface, $namedPropertyGetter);
-    GenerateImplementationCustomCall($interface);
-    GenerateImplementationMasqueradesAsUndefined($interface);
+    $code .= GenerateImplementationIndexedProperty($interface, $indexer);
+    $code .= GenerateImplementationNamedPropertyGetter($interface, $namedPropertyGetter);
+    $code .= GenerateImplementationCustomCall($interface);
+    $code .= GenerateImplementationMasqueradesAsUndefined($interface);
 
     # Define our functions with Set() or SetAccessor()
     my $total_functions = 0;
@@ -3232,21 +3505,21 @@ END
 
         $total_functions++;
         next if IsStandardFunction($interface, $function);
-        GenerateNonStandardFunction($interface, $function);
+        $code .= GenerateNonStandardFunction($interface, $function);
         $num_callbacks++;
     }
 
     die "Wrong number of callbacks generated for $interfaceName ($num_callbacks, should be $total_functions)" if $num_callbacks != $total_functions;
 
     if ($has_constants) {
-        push(@implContent, <<END);
+        $code .= <<END;
     V8DOMConfiguration::batchConfigureConstants(desc, proto, ${v8InterfaceName}Consts, WTF_ARRAY_LENGTH(${v8InterfaceName}Consts), isolate);
 END
     }
 
     # Special cases
     if ($interfaceName eq "DOMWindow") {
-        push(@implContent, <<END);
+        $code .= <<END;
 
     proto->SetInternalFieldCount(V8DOMWindow::internalFieldCount);
     desc->SetHiddenPrototype(true);
@@ -3258,12 +3531,12 @@ END
 END
     }
     if ($interfaceName eq "HTMLDocument" or $interfaceName eq "DedicatedWorkerContext" or $interfaceName eq "SharedWorkerContext") {
-        push(@implContent, <<END);
+        $code .= <<END;
     desc->SetHiddenPrototype(true);
 END
     }
     if ($interfaceName eq "Location") {
-        push(@implContent, <<END);
+        $code .= <<END;
 
     // For security reasons, these functions are on the instance instead
     // of on the prototype object to ensure that they cannot be overwritten.
@@ -3273,13 +3546,17 @@ END
 END
     }
 
-    push(@implContent, <<END);
+    $code .= <<END;
 
     // Custom toString template
     desc->Set(v8::String::NewSymbol("toString"), V8PerIsolateData::current()->toStringTemplate());
     return desc;
 }
 
+END
+    AddToImplContent($code);
+
+    AddToImplContent(<<END);
 v8::Persistent<v8::FunctionTemplate> ${v8InterfaceName}::GetTemplate(v8::Isolate* isolate, WrapperWorldType currentWorldType)
 {
     V8PerIsolateData* data = V8PerIsolateData::from(isolate);
@@ -3294,11 +3571,15 @@ v8::Persistent<v8::FunctionTemplate> ${v8InterfaceName}::GetTemplate(v8::Isolate
     return templ;
 }
 
+END
+    AddToImplContent(<<END);
 bool ${v8InterfaceName}::HasInstance(v8::Handle<v8::Value> value, v8::Isolate* isolate, WrapperWorldType currentWorldType)
 {
     return V8PerIsolateData::from(isolate)->hasInstance(&info, value, currentWorldType);
 }
 
+END
+    AddToImplContent(<<END);
 bool ${v8InterfaceName}::HasInstanceInAnyWorld(v8::Handle<v8::Value> value, v8::Isolate* isolate)
 {
     return V8PerIsolateData::from(isolate)->hasInstance(&info, value, MainWorld)
@@ -3309,7 +3590,8 @@ bool ${v8InterfaceName}::HasInstanceInAnyWorld(v8::Handle<v8::Value> value, v8::
 END
 
     if (@enabledPerContextAttributes) {
-        push(@implContent, <<END);
+        my $code = "";
+        $code .= <<END;
 void ${v8InterfaceName}::installPerContextProperties(v8::Handle<v8::Object> instance, ${nativeType}* impl, v8::Isolate* isolate)
 {
     v8::Local<v8::Object> proto = v8::Local<v8::Object>::Cast(instance->GetPrototype());
@@ -3321,30 +3603,32 @@ END
         foreach my $runtimeAttr (@enabledPerContextAttributes) {
             my $enableFunction = GetContextEnableFunction($runtimeAttr->signature);
             my $conditionalString = $codeGenerator->GenerateConditionalString($runtimeAttr->signature);
-            push(@implContent, "\n#if ${conditionalString}\n") if $conditionalString;
-            push(@implContent, "    if (${enableFunction}(impl->document())) {\n");
-            push(@implContent, "        static const V8DOMConfiguration::BatchedAttribute attrData =\\\n");
-            GenerateSingleBatchedAttribute($interfaceName, $runtimeAttr, ";", "    ");
-            push(@implContent, <<END);
+            $code .= "\n#if ${conditionalString}\n" if $conditionalString;
+            $code .= "    if (${enableFunction}(impl->document())) {\n";
+            $code .= "        static const V8DOMConfiguration::BatchedAttribute attrData =\\\n";
+            $code .= GenerateSingleBatchedAttribute($interfaceName, $runtimeAttr, ";", "    ");
+            $code .= <<END;
         V8DOMConfiguration::configureAttribute(instance, proto, attrData, isolate);
 END
-            push(@implContent, "    }\n");
-            push(@implContent, "#endif // ${conditionalString}\n") if $conditionalString;
+            $code .= "    }\n";
+            $code .= "#endif // ${conditionalString}\n" if $conditionalString;
         }
-        push(@implContent, <<END);
+        $code .= <<END;
 }
 
 END
+        AddToImplContent($code);
     }
 
     if (@enabledPerContextFunctions) {
-        push(@implContent, <<END);
+        my $code = "";
+        $code .= <<END;
 void ${v8InterfaceName}::installPerContextPrototypeProperties(v8::Handle<v8::Object> proto, v8::Isolate* isolate)
 {
     UNUSED_PARAM(proto);
 END
         # Setup the enable-by-settings functions if we have them
-        push(@implContent,  <<END);
+        $code .=  <<END;
     v8::Local<v8::Signature> defaultSignature = v8::Signature::New(GetTemplate(isolate, worldType(isolate)));
     UNUSED_PARAM(defaultSignature); // In some cases, it will not be used.
 
@@ -3354,27 +3638,28 @@ END
         foreach my $runtimeFunc (@enabledPerContextFunctions) {
             my $enableFunction = GetContextEnableFunction($runtimeFunc->signature);
             my $conditionalString = $codeGenerator->GenerateConditionalString($runtimeFunc->signature);
-            push(@implContent, "\n#if ${conditionalString}\n") if $conditionalString;
-            push(@implContent, "    if (context && context->isDocument() && ${enableFunction}(toDocument(context))) {\n");
+            $code .= "\n#if ${conditionalString}\n" if $conditionalString;
+            $code .= "    if (context && context->isDocument() && ${enableFunction}(toDocument(context))) {\n";
             my $name = $runtimeFunc->signature->name;
-            push(@implContent, <<END);
+            $code .= <<END;
         proto->Set(v8::String::NewSymbol("${name}"), v8::FunctionTemplate::New(${interfaceName}V8Internal::${name}MethodCallback, v8Undefined(), defaultSignature)->GetFunction());
 END
-            push(@implContent, "    }\n");
-            push(@implContent, "#endif // ${conditionalString}\n") if $conditionalString;
+            $code .= "    }\n";
+            $code .= "#endif // ${conditionalString}\n" if $conditionalString;
         }
 
-        push(@implContent, <<END);
+        $code .= <<END;
 }
 
 END
+        AddToImplContent($code);
     }
 
     if ($codeGenerator->InheritsExtendedAttribute($interface, "ActiveDOMObject")) {
         # MessagePort is handled like an active dom object even though it doesn't inherit
         # from ActiveDOMObject, so don't try to cast it to ActiveDOMObject.
         my $returnValue = $interfaceName eq "MessagePort" ? "0" : "toNative(object)";
-        push(@implContent, <<END);
+        AddToImplContent(<<END);
 ActiveDOMObject* ${v8InterfaceName}::toActiveDOMObject(v8::Handle<v8::Object> object)
 {
     return $returnValue;
@@ -3384,7 +3669,7 @@ END
     }
 
     if ($codeGenerator->InheritsExtendedAttribute($interface, "EventTarget")) {
-        push(@implContent, <<END);
+        AddToImplContent(<<END);
 EventTarget* ${v8InterfaceName}::toEventTarget(v8::Handle<v8::Object> object)
 {
     return toNative(object);
@@ -3394,7 +3679,7 @@ END
     }
 
     if ($interfaceName eq "DOMWindow") {
-        push(@implContent, <<END);
+        AddToImplContent(<<END);
 v8::Persistent<v8::ObjectTemplate> V8DOMWindow::GetShadowObjectTemplate(v8::Isolate* isolate, WrapperWorldType currentWorldType)
 {
     if (currentWorldType == MainWorld) {
@@ -3419,17 +3704,19 @@ END
 
     GenerateToV8Converters($interface, $v8InterfaceName, $nativeType);
 
-    push(@implContent, <<END);
+    AddToImplContent(<<END);
 void ${v8InterfaceName}::derefObject(void* object)
 {
     static_cast<${nativeType}*>(object)->deref();
 }
 
+END
+    AddToImplContent(<<END);
 } // namespace WebCore
 END
 
     my $conditionalString = $codeGenerator->GenerateConditionalString($interface);
-    push(@implContent, "\n#endif // ${conditionalString}\n") if $conditionalString;
+    AddToImplContent("\n#endif // ${conditionalString}\n") if $conditionalString;
 
     # We've already added the header for this file in implContentHeader, so remove
     # it from implIncludes to ensure we don't #include it twice.
@@ -3447,7 +3734,7 @@ sub GenerateHeaderContentHeader
     push(@headerContentHeader, "\n#ifndef ${v8InterfaceName}" . "_h\n");
     push(@headerContentHeader, "#define ${v8InterfaceName}" . "_h\n\n");
     push(@headerContentHeader, "#if ${conditionalString}\n") if $conditionalString;
-    return @headerContentHeader;
+    return join "", @headerContentHeader;
 }
 
 sub GenerateImplementationContentHeader
@@ -3474,7 +3761,7 @@ sub GenerateCallbackHeader
 
 
     # - Add default header template
-    push(@headerContent, GenerateHeaderContentHeader($interface));
+    AddToHeader(GenerateHeaderContentHeader($interface));
 
     my @unsortedIncludes = ();
     push(@unsortedIncludes, "#include \"ActiveDOMCallback.h\"");
@@ -3483,13 +3770,13 @@ sub GenerateCallbackHeader
     push(@unsortedIncludes, "#include \"ScopedPersistent.h\"");
     push(@unsortedIncludes, "#include <v8.h>");
     push(@unsortedIncludes, "#include <wtf/Forward.h>");
-    push(@headerContent, join("\n", sort @unsortedIncludes));
+    AddToHeader(join("\n", sort @unsortedIncludes));
     
-    push(@headerContent, "\n\nnamespace WebCore {\n\n");
-    push(@headerContent, "class ScriptExecutionContext;\n\n");
-    push(@headerContent, "class $v8InterfaceName : public $interfaceName, public ActiveDOMCallback {\n");
+    AddToHeader("\n\nnamespace WebCore {\n\n");
+    AddToHeader("class ScriptExecutionContext;\n\n");
+    AddToHeader("class $v8InterfaceName : public $interfaceName, public ActiveDOMCallback {\n");
 
-    push(@headerContent, <<END);
+    AddToHeader(<<END);
 public:
     static PassRefPtr<${v8InterfaceName}> create(v8::Handle<v8::Value> value, ScriptExecutionContext* context)
     {
@@ -3505,26 +3792,26 @@ END
     # Functions
     my $numFunctions = @{$interface->functions};
     if ($numFunctions > 0) {
-        push(@headerContent, "    // Functions\n");
+        AddToHeader("    // Functions\n");
         foreach my $function (@{$interface->functions}) {
             my @params = @{$function->parameters};
             if (!$function->signature->extendedAttributes->{"Custom"} &&
                 !(GetNativeType($function->signature->type) eq "bool")) {
-                    push(@headerContent, "    COMPILE_ASSERT(false)");
+                    AddToHeader("    COMPILE_ASSERT(false)");
             }
 
-            push(@headerContent, "    virtual " . GetNativeTypeForCallbacks($function->signature->type) . " " . $function->signature->name . "(");
+            AddToHeader("    virtual " . GetNativeTypeForCallbacks($function->signature->type) . " " . $function->signature->name . "(");
 
             my @args = ();
             foreach my $param (@params) {
                 push(@args, GetNativeTypeForCallbacks($param->type) . " " . $param->name);
             }
-            push(@headerContent, join(", ", @args));
-            push(@headerContent, ");\n");
+            AddToHeader(join(", ", @args));
+            AddToHeader(");\n");
         }
     }
 
-    push(@headerContent, <<END);
+    AddToHeader(<<END);
 
     virtual ScriptExecutionContext* scriptExecutionContext() const { return ContextDestructionObserver::scriptExecutionContext(); }
 
@@ -3537,11 +3824,11 @@ private:
 
 END
 
-    push(@headerContent, "}\n\n");
-    push(@headerContent, "#endif // $v8InterfaceName" . "_h\n\n");
+    AddToHeader("}\n\n");
+    AddToHeader("#endif // $v8InterfaceName" . "_h\n\n");
 
     my $conditionalString = $codeGenerator->GenerateConditionalString($interface);
-    push(@headerContent, "#endif // ${conditionalString}\n") if $conditionalString;
+    AddToHeader("#endif // ${conditionalString}\n") if $conditionalString;
 }
 
 sub GenerateCallbackImplementation
@@ -3558,16 +3845,20 @@ sub GenerateCallbackImplementation
     AddToImplIncludes("V8Binding.h");
     AddToImplIncludes("V8Callback.h");
 
-    push(@implContent, "#include <wtf/Assertions.h>\n\n");
-    push(@implContent, "namespace WebCore {\n\n");
-    push(@implContent, <<END);
+    AddToImplContent("#include <wtf/Assertions.h>\n\n");
+    AddToImplContent("namespace WebCore {\n\n");
+
+    AddToImplContent(<<END);
 ${v8InterfaceName}::${v8InterfaceName}(v8::Handle<v8::Object> callback, ScriptExecutionContext* context)
     : ActiveDOMCallback(context)
     , m_callback(callback)
-    , m_world(context->isDocument() ? DOMWrapperWorld::isolatedWorld(v8::Context::GetCurrent()) : 0)
+    , m_world(DOMWrapperWorld::current())
 {
 }
 
+END
+
+    AddToImplContent(<<END);
 ${v8InterfaceName}::~${v8InterfaceName}()
 {
 }
@@ -3577,8 +3868,9 @@ END
     # Functions
     my $numFunctions = @{$interface->functions};
     if ($numFunctions > 0) {
-        push(@implContent, "// Functions\n");
+        AddToImplContent("// Functions\n");
         foreach my $function (@{$interface->functions}) {
+            my $code = "";
             my @params = @{$function->parameters};
             if ($function->signature->extendedAttributes->{"Custom"} ||
                 !(GetNativeTypeForCallbacks($function->signature->type) eq "bool")) {
@@ -3586,73 +3878,58 @@ END
             }
 
             AddIncludesForType($function->signature->type);
-            push(@implContent, "\n" . GetNativeTypeForCallbacks($function->signature->type) . " ${v8InterfaceName}::" . $function->signature->name . "(");
+            $code .= "\n" . GetNativeTypeForCallbacks($function->signature->type) . " ${v8InterfaceName}::" . $function->signature->name . "(";
 
             my @args = ();
             my @argsCheck = ();
-            my $thisType = $function->signature->extendedAttributes->{"PassThisToCallback"};
             foreach my $param (@params) {
                 my $paramName = $param->name;
                 AddIncludesForType($param->type);
                 push(@args, GetNativeTypeForCallbacks($param->type) . " " . $paramName);
-                if ($thisType and $thisType eq $param->type) {
-                    push(@argsCheck, <<END);
-    ASSERT(${paramName});
-
-END
-                }
             }
-            push(@implContent, join(", ", @args));
+            $code .= join(", ", @args);
 
-            push(@implContent, ")\n");
-            push(@implContent, "{\n");
-            push(@implContent, @argsCheck) if @argsCheck;
-            push(@implContent, "    if (!canInvokeCallback())\n");
-            push(@implContent, "        return true;\n\n");
-            push(@implContent, "    v8::HandleScope handleScope;\n\n");
-            push(@implContent, "    v8::Handle<v8::Context> v8Context = toV8Context(scriptExecutionContext(), m_world.get());\n");
-            push(@implContent, "    if (v8Context.IsEmpty())\n");
-            push(@implContent, "        return true;\n\n");
-            push(@implContent, "    v8::Context::Scope scope(v8Context);\n\n");
+            $code .= ")\n";
+            $code .= "{\n";
+            $code .= join "", @argsCheck if @argsCheck;
+            $code .= "    if (!canInvokeCallback())\n";
+            $code .= "        return true;\n\n";
+            $code .= "    v8::HandleScope handleScope;\n\n";
+            $code .= "    v8::Handle<v8::Context> v8Context = toV8Context(scriptExecutionContext(), m_world.get());\n";
+            $code .= "    if (v8Context.IsEmpty())\n";
+            $code .= "        return true;\n\n";
+            $code .= "    v8::Context::Scope scope(v8Context);\n\n";
 
             @args = ();
             foreach my $param (@params) {
                 my $paramName = $param->name;
-                push(@implContent, "    v8::Handle<v8::Value> ${paramName}Handle = " . NativeToJSValue($param, $paramName, "v8::Handle<v8::Object>()", "v8Context->GetIsolate()", "") . ";\n");
-                push(@implContent, "    if (${paramName}Handle.IsEmpty()) {\n");
-                push(@implContent, "        if (!isScriptControllerTerminating())\n");
-                push(@implContent, "            CRASH();\n");
-                push(@implContent, "        return true;\n");
-                push(@implContent, "    }\n");
+                $code .= "    v8::Handle<v8::Value> ${paramName}Handle = " . NativeToJSValue($param, $paramName, "v8::Handle<v8::Object>()", "v8Context->GetIsolate()", "") . ";\n";
+                $code .= "    if (${paramName}Handle.IsEmpty()) {\n";
+                $code .= "        if (!isScriptControllerTerminating())\n";
+                $code .= "            CRASH();\n";
+                $code .= "        return true;\n";
+                $code .= "    }\n";
                 push(@args, "        ${paramName}Handle");
             }
 
             if (scalar(@args) > 0) {
-                push(@implContent, "\n    v8::Handle<v8::Value> argv[] = {\n");
-                push(@implContent, join(",\n", @args));
-                push(@implContent, "\n    };\n\n");
+                $code .= "\n    v8::Handle<v8::Value> argv[] = {\n";
+                $code .= join(",\n", @args);
+                $code .= "\n    };\n\n";
             } else {
-                push(@implContent, "\n    v8::Handle<v8::Value> *argv = 0;\n\n");
+                $code .= "\n    v8::Handle<v8::Value> *argv = 0;\n\n";
             }
-            push(@implContent, "    bool callbackReturnValue = false;\n");
-            if ($thisType) {
-                foreach my $param (@params) {
-                    next if $param->type ne $thisType;
-                    my $paramName = $param->name;
-                    push(@implContent, "    return !invokeCallback(m_callback.get(), v8::Handle<v8::Object>::Cast(${paramName}Handle), " . scalar(@params) . ", argv, callbackReturnValue, scriptExecutionContext());\n");
-                    last;
-                }
-            } else {
-                push(@implContent, "    return !invokeCallback(m_callback.get(), " . scalar(@params) . ", argv, callbackReturnValue, scriptExecutionContext());\n");
-            }
-            push(@implContent, "}\n");
+            $code .= "    bool callbackReturnValue = false;\n";
+            $code .= "    return !invokeCallback(m_callback.get(), " . scalar(@params) . ", argv, callbackReturnValue, scriptExecutionContext());\n";
+            $code .= "}\n";
+            AddToImplContent($code);
         }
-    }
+   }
 
-    push(@implContent, "\n} // namespace WebCore\n\n");
+    AddToImplContent("\n} // namespace WebCore\n\n");
 
     my $conditionalString = $codeGenerator->GenerateConditionalString($interface);
-    push(@implContent, "#endif // ${conditionalString}\n") if $conditionalString;
+    AddToImplContent("#endif // ${conditionalString}\n") if $conditionalString;
 }
 
 sub BaseInterfaceName
@@ -3678,11 +3955,13 @@ sub GenerateToV8Converters
     }
 
     AddToImplIncludes("Frame.h");
+    AddToImplIncludes("ScriptController.h");
 
     my $createWrapperArgumentType = GetPassRefPtrType($nativeType);
     my $baseType = BaseInterfaceName($interface);
 
-    push(@implContent, <<END);
+    my $code = "";
+    $code .= <<END;
 
 v8::Handle<v8::Object> ${v8InterfaceName}::createWrapper(${createWrapperArgumentType} impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
 {
@@ -3691,19 +3970,19 @@ v8::Handle<v8::Object> ${v8InterfaceName}::createWrapper(${createWrapperArgument
 END
 
     my $vtableNameGnu = GetGnuVTableNameForInterface($interface);
-    push(@implContent, <<END) if $vtableNameGnu;
+    $code .= <<END if $vtableNameGnu;
 
 #if ENABLE(BINDING_INTEGRITY)
     checkTypeOrDieTrying(impl.get());
 #endif
 END
 
-    push(@implContent, <<END) if ($baseType ne $interfaceName);
+    $code .= <<END if ($baseType ne $interfaceName);
     ASSERT(static_cast<void*>(static_cast<${baseType}*>(impl.get())) == static_cast<void*>(impl.get()));
 END
 
     if ($codeGenerator->InheritsInterface($interface, "Document")) {
-        push(@implContent, <<END);
+        $code .= <<END;
     if (Frame* frame = impl->frame()) {
         if (frame->script()->initializeMainWorld()) {
             // initializeMainWorld may have created a wrapper for the object, retry from the start.
@@ -3715,7 +3994,7 @@ END
 END
     }
 
-    push(@implContent, <<END);
+    $code .= <<END;
 
     v8::Handle<v8::Object> wrapper = V8DOMWrapper::createWrapper(creationContext, &info, impl.get(), isolate);
     if (UNLIKELY(wrapper.IsEmpty()))
@@ -3726,6 +4005,7 @@ END
     return wrapper;
 }
 END
+    AddToImplContent($code);
 }
 
 sub GenerateSecurityCheckFunctions
@@ -3734,13 +4014,15 @@ sub GenerateSecurityCheckFunctions
     my $interfaceName = $interface->name;
     my $v8InterfaceName = "V8$interfaceName";
 
-    push(@implContentInternals, <<END);
+    AddToImplContentInternals(<<END);
 bool indexedSecurityCheck(v8::Local<v8::Object> host, uint32_t index, v8::AccessType type, v8::Local<v8::Value>)
 {
     $interfaceName* imp =  ${v8InterfaceName}::toNative(host);
     return BindingSecurity::shouldAllowAccessToFrame(BindingState::instance(), imp->frame(), DoNotReportSecurityError);
 }
 
+END
+    AddToImplContentInternals(<<END);
 bool namedSecurityCheck(v8::Local<v8::Object> host, v8::Local<v8::Value> key, v8::AccessType type, v8::Local<v8::Value>)
 {
     $interfaceName* imp =  ${v8InterfaceName}::toNative(host);
@@ -3883,7 +4165,7 @@ sub GenerateFunctionCallString
     my $name = $function->signature->name;
     my $returnType = $function->signature->type;
     my $nativeReturnType = GetNativeType($returnType, 0);
-    my $result = "";
+    my $code = "";
 
     my $isSVGTearOffType = ($codeGenerator->IsSVGTypeNeedingTearOff($returnType) and not $interfaceName =~ /List$/);
     $nativeReturnType = $codeGenerator->GetSVGWrappedTypeNeedingTearOff($returnType) if $isSVGTearOffType;
@@ -3908,12 +4190,11 @@ sub GenerateFunctionCallString
     }
 
     my $callWith = $function->signature->extendedAttributes->{"CallWith"};
-    my @callWithOutput = ();
-    my @callWithArgs = GenerateCallWith($callWith, \@callWithOutput, $indent, 0, $function);
-    $result .= join("", @callWithOutput);
-    unshift(@arguments, @callWithArgs);
-    $index += @callWithArgs;
-    $numberOfParameters += @callWithArgs;
+    my ($callWithArgs, $subCode) = GenerateCallWith($callWith, $indent, 0, $function);
+    $code .= $subCode;
+    unshift(@arguments, @$callWithArgs);
+    $index += @$callWithArgs;
+    $numberOfParameters += @$callWithArgs;
 
     foreach my $parameter (@{$function->parameters}) {
         if ($index eq $numberOfParameters) {
@@ -3928,8 +4209,8 @@ sub GenerateFunctionCallString
             push @arguments, "$paramName.get()";
         } elsif ($codeGenerator->IsSVGTypeNeedingTearOff($parameter->type) and not $interfaceName =~ /List$/) {
             push @arguments, "$paramName->propertyReference()";
-            $result .= $indent . "if (!$paramName)\n";
-            $result .= $indent . "    return setDOMException(WebCore::TYPE_MISMATCH_ERR, args.GetIsolate());\n";
+            $code .= $indent . "if (!$paramName)\n";
+            $code .= $indent . "    return setDOMException(WebCore::TYPE_MISMATCH_ERR, args.GetIsolate());\n";
         } elsif ($parameter->type eq "SVGMatrix" and $interfaceName eq "SVGTransformList") {
             push @arguments, "$paramName.get()";
         } else {
@@ -3948,9 +4229,9 @@ sub GenerateFunctionCallString
     my $returnIsRef = $codeGenerator->IsRefPtrType($returnType);
 
     if ($returnType eq "void") {
-        $result .= $indent . "$functionString;\n";
+        $code .= $indent . "$functionString;\n";
     } elsif ($codeGenerator->ExtendedAttributeContains($callWith, "ScriptState") or $function->signature->extendedAttributes->{"RaisesException"}) {
-        $result .= $indent . $nativeReturnType . " result = $functionString;\n";
+        $code .= $indent . $nativeReturnType . " result = $functionString;\n";
     } else {
         # Can inline the function call into the return statement to avoid overhead of using a Ref<> temporary
         $return = $functionString;
@@ -3962,16 +4243,16 @@ sub GenerateFunctionCallString
     }
 
     if ($function->signature->extendedAttributes->{"RaisesException"}) {
-        $result .= $indent . "if (UNLIKELY(ec))\n";
-        $result .= $indent . "    goto fail;\n";
+        $code .= $indent . "if (UNLIKELY(ec))\n";
+        $code .= $indent . "    goto fail;\n";
     }
 
     if ($codeGenerator->ExtendedAttributeContains($callWith, "ScriptState")) {
-        $result .= $indent . "if (state.hadException()) {\n";
-        $result .= $indent . "    v8::Local<v8::Value> exception = state.exception();\n";
-        $result .= $indent . "    state.clearException();\n";
-        $result .= $indent . "    return throwError(exception, args.GetIsolate());\n";
-        $result .= $indent . "}\n";
+        $code .= $indent . "if (state.hadException()) {\n";
+        $code .= $indent . "    v8::Local<v8::Value> exception = state.exception();\n";
+        $code .= $indent . "    state.clearException();\n";
+        $code .= $indent . "    return throwError(exception, args.GetIsolate());\n";
+        $code .= $indent . "}\n";
     }
 
     if ($isSVGTearOffType) {
@@ -3980,16 +4261,16 @@ sub GenerateFunctionCallString
         my $svgNativeType = $codeGenerator->GetSVGTypeNeedingTearOff($returnType);
         # FIXME: Update for all ScriptWrappables.
         if (IsDOMNodeType($interfaceName)) {
-            $result .= $indent . "return toV8Fast${forMainWorldSuffix}(WTF::getPtr(${svgNativeType}::create($return)), args, imp);\n";
+            $code .= $indent . "return toV8Fast${forMainWorldSuffix}(WTF::getPtr(${svgNativeType}::create($return)), args, imp);\n";
         } else {
-            $result .= $indent . "return toV8${forMainWorldSuffix}(WTF::getPtr(${svgNativeType}::create($return)), args.Holder(), args.GetIsolate());\n";
+            $code .= $indent . "return toV8${forMainWorldSuffix}(WTF::getPtr(${svgNativeType}::create($return)), args.Holder(), args.GetIsolate());\n";
         }
-        return $result;
+        return $code;
     }
 
     # If the implementing class is a POD type, commit changes
     if ($codeGenerator->IsSVGTypeNeedingTearOff($interfaceName) and not $interfaceName =~ /List$/) {
-        $result .= $indent . "wrapper->commitChange();\n";
+        $code .= $indent . "wrapper->commitChange();\n";
     }
 
     $return .= ".release()" if ($returnIsRef);
@@ -4002,9 +4283,9 @@ sub GenerateFunctionCallString
         $nativeValue = NativeToJSValue($function->signature, $return, "args.Holder()", "args.GetIsolate()", 0, 0, "ReturnUnsafeHandle", $forMainWorldSuffix);
     }
 
-    $result .= $indent . "return " . $nativeValue . ";\n";
+    $code .= $indent . "return " . $nativeValue . ";\n";
 
-    return $result;
+    return $code;
 }
 
 sub GetNativeTypeFromSignature
@@ -4210,17 +4491,17 @@ sub CreateCustomSignature
     my $function = shift;
     my $count = @{$function->parameters};
     my $name = $function->signature->name;
-    my $result = "    const int ${name}Argc = ${count};\n" .
+    my $code = "    const int ${name}Argc = ${count};\n" .
       "    v8::Handle<v8::FunctionTemplate> ${name}Argv[${name}Argc] = { ";
     my $first = 1;
     foreach my $parameter (@{$function->parameters}) {
         if ($first) { $first = 0; }
-        else { $result .= ", "; }
+        else { $code .= ", "; }
         if (IsWrapperType($parameter->type)) {
             if ($parameter->type eq "XPathNSResolver") {
                 # Special case for XPathNSResolver.  All other browsers accepts a callable,
                 # so, even though it's against IDL, accept objects here.
-                $result .= "v8::Handle<v8::FunctionTemplate>()";
+                $code .= "v8::Handle<v8::FunctionTemplate>()";
             } else {
                 my $type = $parameter->type;
 
@@ -4237,21 +4518,21 @@ sub CreateCustomSignature
                         AddToImplIncludes(GetV8HeaderName($arrayOrSequenceType));
                         AddToImplIncludes("${arrayOrSequenceType}.h");
                     } else {
-                        $result .= "v8::Handle<v8::FunctionTemplate>()";
+                        $code .= "v8::Handle<v8::FunctionTemplate>()";
                         next;
                     }
                 } else {
                     AddToImplIncludes(GetV8HeaderName($type));
                 }
-                $result .= "V8PerIsolateData::from(isolate)->rawTemplate(&V8${type}::info, currentWorldType)";
+                $code .= "V8PerIsolateData::from(isolate)->rawTemplate(&V8${type}::info, currentWorldType)";
             }
         } else {
-            $result .= "v8::Handle<v8::FunctionTemplate>()";
+            $code .= "v8::Handle<v8::FunctionTemplate>()";
         }
     }
-    $result .= " };\n";
-    $result .= "    v8::Handle<v8::Signature> ${name}Signature = v8::Signature::New(desc, ${name}Argc, ${name}Argv);\n";
-    return $result;
+    $code .= " };\n";
+    $code .= "    v8::Handle<v8::Signature> ${name}Signature = v8::Signature::New(desc, ${name}Argc, ${name}Argv);\n";
+    return $code;
 }
 
 
@@ -4274,8 +4555,7 @@ sub RequiresCustomSignature
       return 0;
     }
     foreach my $parameter (@{$function->parameters}) {
-        my $optional = $parameter->extendedAttributes->{"Optional"};
-        if (($optional && $optional ne "DefaultIsUndefined" && $optional ne "DefaultIsNullString") || $parameter->extendedAttributes->{"Callback"}) {
+        if (($parameter->isOptional && !$parameter->extendedAttributes->{"Default"}) || $parameter->extendedAttributes->{"Callback"}) {
             return 0;
         }
     }

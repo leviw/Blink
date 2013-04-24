@@ -31,15 +31,15 @@
 #include "config.h"
 #include "V8Clipboard.h"
 
-#include "Clipboard.h"
-#include "HTMLImageElement.h"
 #include "HTMLNames.h"
-#include "IntPoint.h"
-#include "Node.h"
-#include "Element.h"
+#include "core/dom/Clipboard.h"
+#include "core/dom/Element.h"
+#include "core/dom/Node.h"
+#include "core/html/HTMLImageElement.h"
+#include "core/platform/graphics/IntPoint.h"
 
-#include "V8Binding.h"
 #include "V8Node.h"
+#include "bindings/v8/V8Binding.h"
 
 namespace WebCore {
 
@@ -97,7 +97,7 @@ v8::Handle<v8::Value> V8Clipboard::setDragImageMethodCustom(const v8::Arguments&
     if (!node || !node->isElementNode())
         return throwTypeError("setDragImageFromElement: Invalid first argument", args.GetIsolate());
 
-    if (toElement(node)->hasLocalName(HTMLNames::imgTag) && !node->inDocument())
+    if (toElement(node)->hasTagName(HTMLNames::imgTag) && !node->inDocument())
         clipboard->setDragImage(static_cast<HTMLImageElement*>(node)->cachedImage(), IntPoint(x, y));
     else
         clipboard->setDragImageElement(node, IntPoint(x, y));

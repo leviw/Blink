@@ -31,21 +31,21 @@
 #ifndef V8WorkerContextErrorHandler_h
 #define V8WorkerContextErrorHandler_h
 
-#include "V8WorkerContextEventListener.h"
+#include "bindings/v8/V8WorkerContextEventListener.h"
 #include <v8.h>
-#include <wtf/PassRefPtr.h>
+#include "wtf/PassRefPtr.h"
 
 namespace WebCore {
 
 class V8WorkerContextErrorHandler : public V8WorkerContextEventListener {
 public:
-    static PassRefPtr<V8WorkerContextErrorHandler> create(v8::Local<v8::Object> listener, bool isInline, const WorldContextHandle& worldContext)
+    static PassRefPtr<V8WorkerContextErrorHandler> create(v8::Local<v8::Object> listener, bool isInline)
     {
-        return adoptRef(new V8WorkerContextErrorHandler(listener, isInline, worldContext));
+        return adoptRef(new V8WorkerContextErrorHandler(listener, isInline));
     }
 
 private:
-    V8WorkerContextErrorHandler(v8::Local<v8::Object> listener, bool isInline, const WorldContextHandle& worldContext);
+    V8WorkerContextErrorHandler(v8::Local<v8::Object> listener, bool isInline);
 
     virtual v8::Local<v8::Value> callListenerFunction(ScriptExecutionContext*, v8::Handle<v8::Value> jsEvent, Event*);
     virtual bool shouldPreventDefault(v8::Local<v8::Value> returnValue);

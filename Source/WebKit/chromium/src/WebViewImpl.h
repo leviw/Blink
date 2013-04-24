@@ -35,12 +35,7 @@
 #include "ContextMenuClientImpl.h"
 #include "DragClientImpl.h"
 #include "EditorClientImpl.h"
-#include "FloatSize.h"
-#include "GraphicsContext3D.h"
-#include "GraphicsLayer.h"
 #include "InspectorClientImpl.h"
-#include "IntPoint.h"
-#include "IntRect.h"
 #include "NotificationPresenterImpl.h"
 #include "PageOverlayList.h"
 #include "PagePopupDriver.h"
@@ -50,6 +45,11 @@
 #include "WebNavigationPolicy.h"
 #include "WebView.h"
 #include "WebViewBenchmarkSupportImpl.h"
+#include "core/platform/graphics/FloatSize.h"
+#include "core/platform/graphics/GraphicsContext3D.h"
+#include "core/platform/graphics/GraphicsLayer.h"
+#include "core/platform/graphics/IntPoint.h"
+#include "core/platform/graphics/IntRect.h"
 #include <public/WebFloatQuad.h>
 #include <public/WebGestureCurveTarget.h>
 #include <public/WebLayer.h>
@@ -191,6 +191,7 @@ public:
     virtual void setPermissionClient(WebPermissionClient*);
     virtual void setPrerendererClient(WebPrerendererClient*) OVERRIDE;
     virtual void setSpellCheckClient(WebSpellCheckClient*);
+    virtual void setValidationMessageClient(WebValidationMessageClient*) OVERRIDE;
     virtual void addTextFieldDecoratorClient(WebTextFieldDecoratorClient*) OVERRIDE;
     virtual WebSettings* settings();
     virtual WebString pageEncoding() const;
@@ -339,12 +340,6 @@ public:
     WebCore::Node* focusedWebCoreNode();
 
     static WebViewImpl* fromPage(WebCore::Page*);
-
-    // A pageGroup identifies a namespace of pages. Page groups are used on PLATFORM(MAC)
-    // for some programs that use HTML views to display things that don't seem like
-    // web pages to the user (so shouldn't have visited link coloring). We only use
-    // one page group.
-    static WebCore::PageGroup* defaultPageGroup();
 
     WebViewClient* client()
     {
@@ -535,6 +530,8 @@ public:
     WebCore::GraphicsLayerFactory* graphicsLayerFactory() const;
     void registerForAnimations(WebLayer*);
     void scheduleAnimation();
+
+    void didProgrammaticallyScroll(const WebCore::IntPoint& scrollPoint);
 
     virtual void setVisibilityState(WebPageVisibilityState, bool);
 
@@ -845,9 +842,7 @@ private:
 #if ENABLE(INPUT_SPEECH)
     OwnPtr<SpeechInputClientImpl> m_speechInputClient;
 #endif
-#if ENABLE(SCRIPTED_SPEECH)
     OwnPtr<SpeechRecognitionClientProxy> m_speechRecognitionClient;
-#endif
 
     OwnPtr<DeviceOrientationClientProxy> m_deviceOrientationClientProxy;
     OwnPtr<GeolocationClientProxy> m_geolocationClientProxy;

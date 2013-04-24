@@ -30,8 +30,10 @@
 
 {
     'includes': [
-        'features.gypi',
+        '../../core/features.gypi',
         'WebKit.gypi',
+        '../../wtf/wtf.gypi',
+        '../../core/core.gypi',
     ],
     'targets': [
         {
@@ -45,10 +47,10 @@
                 '<(DEPTH)/base/base.gyp:base',
                 '<(DEPTH)/base/base.gyp:base_i18n',
                 '<(DEPTH)/base/base.gyp:test_support_base',
+                '<(DEPTH)/build/temp_gyp/googleurl.gyp:googleurl',
                 '<(DEPTH)/testing/gmock.gyp:gmock',
                 '<(DEPTH)/testing/gtest.gyp:gtest',
                 '<(DEPTH)/third_party/zlib/zlib.gyp:zlib',
-                '<(DEPTH)/url/url.gyp:url',
                 '<(DEPTH)/v8/tools/gyp/v8.gyp:v8',
                 '<(DEPTH)/webkit/support/webkit_support.gyp:webkit_support',
             ],
@@ -71,13 +73,14 @@
                     ],
                 }, {
                     'dependencies': [
-                        '../../WebCore/WebCore.gyp/WebCore.gyp:webcore',
-                        '../../bindings/bindings.gyp:bindings',
+                        '../../core/core.gyp/core.gyp:webcore',
                     ],
                     'defines': [
                         'WEBKIT_IMPLEMENTATION=1',
                     ],
                     'sources': [
+                        '<@(wtf_unittest_files)',
+                        '<@(core_unittest_files)',
                         '<@(webkit_unittest_files)',
                     ],
                     'conditions': [

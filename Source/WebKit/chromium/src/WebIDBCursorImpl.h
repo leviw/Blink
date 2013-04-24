@@ -42,10 +42,10 @@ public:
     WebIDBCursorImpl(WTF::PassRefPtr<WebCore::IDBCursorBackendInterface>);
     virtual ~WebIDBCursorImpl();
 
-    virtual void advance(unsigned long, WebIDBCallbacks*, WebExceptionCode&);
-    virtual void continueFunction(const WebIDBKey&, WebIDBCallbacks*, WebExceptionCode&);
-    virtual void deleteFunction(WebIDBCallbacks*, WebExceptionCode&);
-    virtual void prefetchContinue(int numberToFetch, WebIDBCallbacks*, WebExceptionCode&);
+    virtual void advance(unsigned long, WebIDBCallbacks*);
+    virtual void continueFunction(const WebIDBKey&, WebIDBCallbacks*);
+    virtual void deleteFunction(WebIDBCallbacks* callbacks);
+    virtual void prefetchContinue(int numberToFetch, WebIDBCallbacks*);
     virtual void prefetchReset(int usedPrefetches, int unusedPrefetches);
 
  private:

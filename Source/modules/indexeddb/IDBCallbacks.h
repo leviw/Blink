@@ -29,15 +29,14 @@
 #ifndef IDBCallbacks_h
 #define IDBCallbacks_h
 
-#include "IDBDatabaseBackendInterface.h"
-#include "IDBDatabaseError.h"
-#include "IDBKey.h"
-#include "IDBKeyPath.h"
-#include "SharedBuffer.h"
-#include <wtf/RefCounted.h>
+#include "core/platform/SharedBuffer.h"
+#include "modules/indexeddb/IDBDatabaseBackendInterface.h"
+#include "modules/indexeddb/IDBDatabaseError.h"
+#include "modules/indexeddb/IDBKey.h"
+#include "modules/indexeddb/IDBKeyPath.h"
+#include "wtf/RefCounted.h"
 
 namespace WebCore {
-class DOMStringList;
 class IDBCursorBackendInterface;
 
 class IDBCallbacks : public RefCounted<IDBCallbacks> {
@@ -46,7 +45,7 @@ public:
 
     virtual void onError(PassRefPtr<IDBDatabaseError>) = 0;
     // From IDBFactory.webkitGetDatabaseNames()
-    virtual void onSuccess(PassRefPtr<DOMStringList>) = 0;
+    virtual void onSuccess(const Vector<String>&) = 0;
     // From IDBObjectStore/IDBIndex.openCursor(), IDBIndex.openKeyCursor()
     virtual void onSuccess(PassRefPtr<IDBCursorBackendInterface>, PassRefPtr<IDBKey>, PassRefPtr<IDBKey> primaryKey, PassRefPtr<SharedBuffer>) = 0;
     // From IDBObjectStore.add()/put(), IDBIndex.getKey()

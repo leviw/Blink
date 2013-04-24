@@ -19,6 +19,7 @@
 #
 
 ActiveDOMObject
+ActivityLog=Access|Setter|Getter|AccessForIsolatedWorlds|SetterForIsolatedWorlds|GetterForIsolatedWorlds
 CachedAttribute
 CacheAttributeForGC
 CallWith=ScriptExecutionContext|ScriptState|ScriptArguments
@@ -44,6 +45,7 @@ CustomNamedGetter
 CustomNamedSetter
 CustomSetter
 CustomToJSObject
+Default=NullString|Undefined
 DeliverCustomElementCallbacks
 DependentLifetime
 DoNotCheckConstants
@@ -72,8 +74,6 @@ NamedConstructor=*
 NamedGetter
 NoWrapperCache
 NotEnumerable
-NumericIndexedGetter
-Optional=|DefaultIsNullString|DefaultIsUndefined
 PerWorldBindings
 RaisesException
 ReadOnly

@@ -30,17 +30,17 @@
 
 #include "config.h"
 
-#include "V8WorkerContextErrorHandler.h"
+#include "bindings/v8/V8WorkerContextErrorHandler.h"
 
-#include "EventNames.h"
-#include "ErrorEvent.h"
-#include "V8Binding.h"
-#include "V8RecursionScope.h"
+#include "bindings/v8/V8Binding.h"
+#include "bindings/v8/V8RecursionScope.h"
+#include "core/dom/ErrorEvent.h"
+#include "core/dom/EventNames.h"
 
 namespace WebCore {
 
-V8WorkerContextErrorHandler::V8WorkerContextErrorHandler(v8::Local<v8::Object> listener, bool isInline, const WorldContextHandle& worldContext)
-    : V8WorkerContextEventListener(listener, isInline, worldContext)
+V8WorkerContextErrorHandler::V8WorkerContextErrorHandler(v8::Local<v8::Object> listener, bool isInline)
+    : V8WorkerContextEventListener(listener, isInline)
 {
 }
 
@@ -48,7 +48,7 @@ v8::Local<v8::Value> V8WorkerContextErrorHandler::callListenerFunction(ScriptExe
 {
     ASSERT(event->hasInterface(eventNames().interfaceForErrorEvent));
     v8::Local<v8::Object> listener = getListenerObject(context);
-    v8::Isolate* isolate = toV8Context(context, worldContext())->GetIsolate();
+    v8::Isolate* isolate = toV8Context(context, world())->GetIsolate();
     v8::Local<v8::Value> returnValue;
     if (!listener.IsEmpty() && listener->IsFunction()) {
         ErrorEvent* errorEvent = static_cast<ErrorEvent*>(event);

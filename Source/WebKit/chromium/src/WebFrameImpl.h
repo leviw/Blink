@@ -36,6 +36,7 @@
 #include "Frame.h"
 #include "FrameDestructionObserver.h"
 #include "FrameLoaderClientImpl.h"
+#include "core/platform/graphics/FloatRect.h"
 #include <public/WebFileSystemType.h>
 #include <wtf/Compiler.h>
 #include <wtf/OwnPtr.h>
@@ -178,6 +179,7 @@ public:
     virtual bool isContinuousSpellCheckingEnabled() const;
     virtual void requestTextChecking(const WebElement&);
     virtual void replaceMisspelledRange(const WebString&);
+    virtual void removeSpellingMarkers();
     virtual bool hasSelection() const;
     virtual WebRange selectionRange() const;
     virtual WebString selectionAsText() const;

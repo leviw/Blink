@@ -31,32 +31,32 @@
 #include "config.h"
 #include "V8InjectedScriptHost.h"
 
-#include "BindingState.h"
-#include "Database.h"
-#include "InjectedScript.h"
-#include "InjectedScriptHost.h"
-#include "InspectorDOMAgent.h"
-#include "InspectorValues.h"
-#include "ScriptDebugServer.h"
-#include "ScriptValue.h"
-#include "V8AbstractEventListener.h"
-#include "V8Binding.h"
 #include "V8Database.h"
 #include "V8Float32Array.h"
-#include "V8Float64Array.h"
 #include "V8HTMLAllCollection.h"
 #include "V8HTMLCollection.h"
-#include "V8HiddenPropertyName.h"
 #include "V8Int16Array.h"
 #include "V8Int32Array.h"
 #include "V8Int8Array.h"
-#include "V8NodeList.h"
 #include "V8Node.h"
+#include "V8NodeList.h"
 #include "V8Storage.h"
 #include "V8Uint16Array.h"
 #include "V8Uint32Array.h"
 #include "V8Uint8Array.h"
 #include "V8Uint8ClampedArray.h"
+#include "bindings/tests/results/V8Float64Array.h"
+#include "bindings/v8/BindingState.h"
+#include "bindings/v8/ScriptDebugServer.h"
+#include "bindings/v8/ScriptValue.h"
+#include "bindings/v8/V8AbstractEventListener.h"
+#include "bindings/v8/V8Binding.h"
+#include "bindings/v8/V8HiddenPropertyName.h"
+#include "core/inspector/InjectedScript.h"
+#include "core/inspector/InjectedScriptHost.h"
+#include "core/inspector/InspectorDOMAgent.h"
+#include "core/inspector/InspectorValues.h"
+#include "modules/webdatabase/Database.h"
 
 namespace WebCore {
 
@@ -110,7 +110,6 @@ v8::Handle<v8::Value> V8InjectedScriptHost::isHTMLAllCollectionMethodCustom(cons
     if (!args[0]->IsObject())
         return v8Boolean(false, args.GetIsolate());
 
-    v8::HandleScope handleScope;
     return v8::Boolean::New(V8HTMLAllCollection::HasInstance(args[0], args.GetIsolate(), worldType(args.GetIsolate())));
 }
 
@@ -155,8 +154,6 @@ v8::Handle<v8::Value> V8InjectedScriptHost::functionDetailsMethodCustom(const v8
     if (args.Length() < 1)
         return v8::Undefined();
 
-    v8::HandleScope handleScope;
-
     v8::Handle<v8::Value> value = args[0];
     if (!value->IsFunction())
         return v8::Undefined();
@@ -194,8 +191,6 @@ v8::Handle<v8::Value> V8InjectedScriptHost::getInternalPropertiesMethodCustom(co
     if (args.Length() < 1)
         return v8::Undefined();
 
-    v8::HandleScope handleScope;
-
     v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(args[0]);
 
     InjectedScriptHost* host = V8InjectedScriptHost::toNative(args.Holder());
@@ -214,7 +209,7 @@ static v8::Handle<v8::Array> getJSListenerFunctions(Document* document, const Ev
             continue;
         }
         V8AbstractEventListener* v8Listener = static_cast<V8AbstractEventListener*>(listener.get());
-        v8::Local<v8::Context> context = toV8Context(document, v8Listener->worldContext());
+        v8::Local<v8::Context> context = toV8Context(document, v8Listener->world());
         // Hide listeners from other contexts.
         if (context != v8::Context::GetCurrent())
             continue;
@@ -239,8 +234,6 @@ v8::Handle<v8::Value> V8InjectedScriptHost::getEventListenersMethodCustom(const 
 {
     if (args.Length() < 1)
         return v8::Undefined();
-
-    v8::HandleScope handleScope;
 
     v8::Local<v8::Value> value = args[0];
     if (!V8Node::HasInstance(value, args.GetIsolate(), worldType(args.GetIsolate())))

@@ -26,8 +26,8 @@
 #ifndef NonCompositedContentHost_h
 #define NonCompositedContentHost_h
 
-#include "GraphicsLayerClient.h"
-#include "IntSize.h"
+#include "core/platform/graphics/GraphicsLayerClient.h"
+#include "core/platform/graphics/IntSize.h"
 
 #include <public/WebLayer.h>
 #include <wtf/Noncopyable.h>
@@ -55,12 +55,14 @@ public:
     }
     virtual ~NonCompositedContentHost();
 
-    void invalidateRect(const WebCore::IntRect&);
+    WebCore::Color backgroundColor() const;
     void setBackgroundColor(const WebCore::Color&);
     void setOpaque(bool);
     void setScrollLayer(WebCore::GraphicsLayer*);
     void setViewport(const WebCore::IntSize& viewportSize, const WebCore::IntSize& contentsSize, const WebCore::IntPoint& scrollPosition, const WebCore::IntPoint& scrollOrigin);
     WebCore::GraphicsLayer* topLevelRootLayer() const { return m_graphicsLayer.get(); }
+
+    void invalidateRect(const WebCore::IntRect&);
 
     void setShowDebugBorders(bool);
 

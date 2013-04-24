@@ -24,11 +24,11 @@
  */
 
 #include "config.h"
-#include "IDBBackingStore.h"
-#include "LevelDBDatabase.h"
-#include "SecurityOrigin.h"
 #include <gtest/gtest.h>
 #include <webkit/support/webkit_support.h>
+#include "IDBBackingStore.h"
+#include "SecurityOrigin.h"
+#include "core/platform/leveldb/LevelDBDatabase.h"
 
 using namespace WebCore;
 
@@ -76,7 +76,7 @@ TEST(IDBIOErrorTest, CleanUpTest)
     const String path = String::fromUTF8(tempDirectory->path().c_str());
     String dummyFileIdentifier;
     MockLevelDBFactory mockLevelDBFactory;
-    RefPtr<IDBBackingStore> backingStore = IDBBackingStore::open(origin.get(), path, dummyFileIdentifier, &mockLevelDBFactory);
+    RefPtr<IDBBackingStore> backingStore = IDBBackingStore::open(origin->databaseIdentifier(), path, dummyFileIdentifier, &mockLevelDBFactory);
 }
 
 } // namespace

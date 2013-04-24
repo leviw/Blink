@@ -30,17 +30,17 @@
 
 #include "config.h"
 
-#include "V8WindowErrorHandler.h"
+#include "bindings/v8/V8WindowErrorHandler.h"
 
-#include "EventNames.h"
-#include "ErrorEvent.h"
-#include "ScriptController.h"
-#include "V8Binding.h"
+#include "bindings/v8/ScriptController.h"
+#include "bindings/v8/V8Binding.h"
+#include "core/dom/ErrorEvent.h"
+#include "core/dom/EventNames.h"
 
 namespace WebCore {
 
-V8WindowErrorHandler::V8WindowErrorHandler(v8::Local<v8::Object> listener, bool isInline, const WorldContextHandle& worldContext)
-    : V8EventListener(listener, isInline, worldContext)
+V8WindowErrorHandler::V8WindowErrorHandler(v8::Local<v8::Object> listener, bool isInline)
+    : V8EventListener(listener, isInline)
 {
 }
 
@@ -51,7 +51,7 @@ v8::Local<v8::Value> V8WindowErrorHandler::callListenerFunction(ScriptExecutionC
 
     ErrorEvent* errorEvent = static_cast<ErrorEvent*>(event);
     v8::Local<v8::Object> listener = getListenerObject(context);
-    v8::Isolate* isolate = toV8Context(context, worldContext())->GetIsolate();
+    v8::Isolate* isolate = toV8Context(context, world())->GetIsolate();
     v8::Local<v8::Value> returnValue;
     if (!listener.IsEmpty() && listener->IsFunction()) {
         v8::Local<v8::Function> callFunction = v8::Local<v8::Function>::Cast(listener);

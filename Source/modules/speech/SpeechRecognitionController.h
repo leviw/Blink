@@ -26,11 +26,9 @@
 #ifndef SpeechRecognitionController_h
 #define SpeechRecognitionController_h
 
-#if ENABLE(SCRIPTED_SPEECH)
-
-#include "Page.h"
-#include "SpeechRecognitionClient.h"
-#include <wtf/PassOwnPtr.h>
+#include "core/page/Page.h"
+#include "modules/speech/SpeechRecognitionClient.h"
+#include "wtf/PassOwnPtr.h"
 
 namespace WebCore {
 
@@ -57,7 +55,5 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // ENABLE(SCRIPTED_SPEECH)
 
 #endif // SpeechRecognitionController_h

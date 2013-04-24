@@ -29,40 +29,41 @@
  */
 
 #include "config.h"
-#include "V8DOMWindowShell.h"
+#include "bindings/v8/V8DOMWindowShell.h"
 
-#include "ContentSecurityPolicy.h"
-#include "DOMWrapperWorld.h"
-#include "DateExtension.h"
-#include "DocumentLoader.h"
-#include "Frame.h"
-#include "FrameLoader.h"
-#include "FrameLoaderClient.h"
-#include "HTMLCollection.h"
-#include "HTMLIFrameElement.h"
-#include "InspectorInstrumentation.h"
-#include "Page.h"
-#include "RuntimeEnabledFeatures.h"
-#include "ScriptController.h"
-#include "SecurityOrigin.h"
-#include "V8Binding.h"
 #include "V8DOMWindow.h"
 #include "V8Document.h"
-#include "V8GCForContextDispose.h"
 #include "V8HTMLCollection.h"
 #include "V8HTMLDocument.h"
-#include "V8HiddenPropertyName.h"
-#include "V8Initializer.h"
-#include "V8ObjectConstructor.h"
-#include "V8PerContextData.h"
+#include "bindings/v8/DOMWrapperWorld.h"
+#include "bindings/v8/DateExtension.h"
+#include "bindings/v8/ScriptController.h"
+#include "bindings/v8/V8Binding.h"
+#include "bindings/v8/V8GCForContextDispose.h"
+#include "bindings/v8/V8HiddenPropertyName.h"
+#include "bindings/v8/V8Initializer.h"
+#include "bindings/v8/V8ObjectConstructor.h"
+#include "bindings/v8/V8PerContextData.h"
+#include "core/html/HTMLCollection.h"
+#include "core/html/HTMLIFrameElement.h"
+#include "core/inspector/InspectorInstrumentation.h"
+#include "core/loader/DocumentLoader.h"
+#include "core/loader/FrameLoader.h"
+#include "core/loader/FrameLoaderClient.h"
+#include "core/page/ContentSecurityPolicy.h"
+#include "core/page/Frame.h"
+#include "core/page/Page.h"
+#include "core/page/RuntimeEnabledFeatures.h"
+#include "core/page/SecurityOrigin.h"
+#include "core/platform/HistogramSupport.h"
 #include <algorithm>
 #include <utility>
 #include <v8-debug.h>
 #include <v8.h>
-#include <wtf/Assertions.h>
-#include <wtf/OwnArrayPtr.h>
-#include <wtf/StringExtras.h>
-#include <wtf/text/CString.h>
+#include "wtf/Assertions.h"
+#include "wtf/OwnArrayPtr.h"
+#include "wtf/StringExtras.h"
+#include "wtf/text/CString.h"
 
 #if ENABLE(JAVASCRIPT_I18N_API)
 #include <v8-i18n/include/extension.h>
@@ -91,19 +92,6 @@ V8DOMWindowShell::V8DOMWindowShell(Frame* frame, PassRefPtr<DOMWrapperWorld> wor
     , m_world(world)
     , m_isolate(isolate)
 {
-}
-
-void V8DOMWindowShell::destroyIsolatedShell()
-{
-    ASSERT(m_world->isIsolatedWorld());
-
-    if (m_context.isEmpty())
-        return;
-
-    v8::HandleScope handleScope;
-    m_world->makeContextWeak(m_context.get());
-    disposeContext();
-    m_global.clear();
 }
 
 void V8DOMWindowShell::disposeContext()
@@ -280,6 +268,8 @@ void V8DOMWindowShell::createContext()
     if (globalTemplate.IsEmpty())
         return;
 
+    double contextCreationStartInSeconds = currentTime();
+
     // Used to avoid sleep calls in unload handlers.
     ScriptController::registerExtensionIfNeeded(DateExtension::get());
 
@@ -306,6 +296,12 @@ void V8DOMWindowShell::createContext()
     v8::ExtensionConfiguration extensionConfiguration(index, extensionNames.get());
 
     m_context.adopt(v8::Context::New(&extensionConfiguration, globalTemplate, m_global.get()));
+
+    double contextCreationDurationInMilliseconds = (currentTime() - contextCreationStartInSeconds) * 1000;
+    const char* histogramName = "WebCore.V8DOMWindowShell.createContext.MainWorld";
+    if (!m_world->isMainWorld())
+        histogramName = "WebCore.V8DOMWindowShell.createContext.IsolatedWorld";
+    HistogramSupport::histogramCustomCounts(histogramName, contextCreationDurationInMilliseconds, 0, 10000, 50);
 }
 
 bool V8DOMWindowShell::installDOMWindow()

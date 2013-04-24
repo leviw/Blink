@@ -26,18 +26,18 @@
 #include "DOMStringList.h"
 #include "Dictionary.h"
 #include "ExceptionCode.h"
-#include "FeatureObserver.h"
 #include "Frame.h"
 #include "HTMLNames.h"
 #include "RuntimeEnabledFeatures.h"
 #include "SVGPropertyTearOff.h"
 #include "SVGStaticPropertyTearOff.h"
-#include "ScriptArguments.h"
-#include "ScriptCallStackFactory.h"
+#include "ScriptController.h"
 #include "ScriptProfile.h"
 #include "ScriptValue.h"
 #include "SerializedScriptValue.h"
+#include "UseCounter.h"
 #include "V8Binding.h"
+#include "V8DOMActivityLogger.h"
 #include "V8DOMStringList.h"
 #include "V8DOMWrapper.h"
 #include "V8Document.h"
@@ -60,6 +60,7 @@
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 #include <wtf/UnusedParam.h>
+#include <wtf/Vector.h>
 
 #if ENABLE(Condition1)
 #include "V8TestObjectA.h"
@@ -107,6 +108,22 @@ inline void checkTypeOrDieTrying(TestObj* object)
 }
 #endif // ENABLE(BINDING_INTEGRITY)
 
+#if defined(OS_WIN)
+// In ScriptWrappable, the use of extern function prototypes inside templated static methods has an issue on windows.
+// These prototypes do not pick up the surrounding namespace, so drop out of WebCore as a workaround.
+} // namespace WebCore
+using WebCore::ScriptWrappable;
+using WebCore::V8TestObj;
+using WebCore::TestObj;
+#endif
+void initializeScriptWrappableForInterface(TestObj* object)
+{
+    if (ScriptWrappable::wrapperCanBeStoredInObject(object))
+        ScriptWrappable::setTypeInfoInObject(object, &V8TestObj::info);
+}
+#if defined(OS_WIN)
+namespace WebCore {
+#endif
 WrapperTypeInfo V8TestObj::info = { V8TestObj::GetTemplate, V8TestObj::derefObject, 0, 0, 0, V8TestObj::installPerContextPrototypeProperties, 0, WrapperTypeObjectPrototype };
 
 namespace TestObjV8Internal {
@@ -364,7 +381,7 @@ static v8::Handle<v8::Value> testObjAttrAttrGetter(v8::Local<v8::String> name, c
 
 static v8::Handle<v8::Value> testObjAttrAttrGetterCallback(v8::Local<v8::String> name, const v8::AccessorInfo& info)
 {
-    FeatureObserver::observe(activeDOMWindow(BindingState::instance()), FeatureObserver::TestFeature);
+    UseCounter::observe(activeDOMWindow(BindingState::instance()), UseCounter::TestFeature);
     return TestObjV8Internal::testObjAttrAttrGetter(name, info);
 }
 
@@ -378,7 +395,7 @@ static void testObjAttrAttrSetter(v8::Local<v8::String> name, v8::Local<v8::Valu
 
 static void testObjAttrAttrSetterCallback(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
 {
-    FeatureObserver::observe(activeDOMWindow(BindingState::instance()), FeatureObserver::TestFeature);
+    UseCounter::observe(activeDOMWindow(BindingState::instance()), UseCounter::TestFeature);
     TestObjV8Internal::testObjAttrAttrSetter(name, value, info);
 }
 
@@ -1032,30 +1049,6 @@ static void withScriptExecutionContextAndScriptStateWithSpacesAttributeAttrSette
 static void withScriptExecutionContextAndScriptStateWithSpacesAttributeAttrSetterCallback(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
 {
     TestObjV8Internal::withScriptExecutionContextAndScriptStateWithSpacesAttributeAttrSetter(name, value, info);
-}
-
-static v8::Handle<v8::Value> withScriptArgumentsAndCallStackAttributeAttrGetter(v8::Local<v8::String> name, const v8::AccessorInfo& info)
-{
-    TestObj* imp = V8TestObj::toNative(info.Holder());
-    return toV8Fast(imp->withScriptArgumentsAndCallStackAttribute(), info, imp);
-}
-
-static v8::Handle<v8::Value> withScriptArgumentsAndCallStackAttributeAttrGetterCallback(v8::Local<v8::String> name, const v8::AccessorInfo& info)
-{
-    return TestObjV8Internal::withScriptArgumentsAndCallStackAttributeAttrGetter(name, info);
-}
-
-static void withScriptArgumentsAndCallStackAttributeAttrSetter(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
-{
-    TestObj* imp = V8TestObj::toNative(info.Holder());
-    V8TRYCATCH_VOID(TestObj*, v, V8TestObj::HasInstance(value, info.GetIsolate(), worldType(info.GetIsolate())) ? V8TestObj::toNative(v8::Handle<v8::Object>::Cast(value)) : 0);
-    imp->setWithScriptArgumentsAndCallStackAttribute(WTF::getPtr(v));
-    return;
-}
-
-static void withScriptArgumentsAndCallStackAttributeAttrSetterCallback(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
-{
-    TestObjV8Internal::withScriptArgumentsAndCallStackAttributeAttrSetter(name, value, info);
 }
 
 static v8::Handle<v8::Value> enforcedRangeLongAttrAttrGetter(v8::Local<v8::String> name, const v8::AccessorInfo& info)
@@ -1772,7 +1765,7 @@ static v8::Handle<v8::Value> perWorldReadOnlyAttributeAttrGetterForMainWorld(v8:
 {
     TestObj* imp = V8TestObj::toNative(info.Holder());
     RefPtr<TestObj> result = imp->perWorldReadOnlyAttribute();
-    v8::Handle<v8::Value> wrapper = result.get() ? v8::Handle<v8::Value>(DOMDataStore::getWrapper(result.get(), info.GetIsolate())) : v8Undefined();
+    v8::Handle<v8::Value> wrapper = result.get() ? v8::Handle<v8::Value>(DOMDataStore::getWrapperForMainWorld(result.get())) : v8Undefined();
     if (wrapper.IsEmpty()) {
         wrapper = toV8(result.get(), info.Holder(), info.GetIsolate());
         if (!wrapper.IsEmpty())
@@ -1832,6 +1825,430 @@ static void perWorldAttributeAttrSetterForMainWorld(v8::Local<v8::String> name, 
 static void perWorldAttributeAttrSetterCallbackForMainWorld(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
 {
     TestObjV8Internal::perWorldAttributeAttrSetterForMainWorld(name, value, info);
+}
+
+static v8::Handle<v8::Value> activityLoggedAttr1AttrGetter(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+{
+    TestObj* imp = V8TestObj::toNative(info.Holder());
+    return v8Integer(imp->activityLoggedAttr1(), info.GetIsolate());
+}
+
+static v8::Handle<v8::Value> activityLoggedAttr1AttrGetterCallback(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+{
+    V8PerContextData* contextData = V8PerContextData::from(info.GetIsolate()->GetCurrentContext());
+    if (contextData && contextData->activityLogger())
+        contextData->activityLogger()->log("TestObject.activityLoggedAttr1", 0, 0, "Getter");
+    return TestObjV8Internal::activityLoggedAttr1AttrGetter(name, info);
+}
+
+static void activityLoggedAttr1AttrSetter(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
+{
+    TestObj* imp = V8TestObj::toNative(info.Holder());
+    V8TRYCATCH_VOID(int, v, toInt32(value));
+    imp->setActivityLoggedAttr1(v);
+    return;
+}
+
+static void activityLoggedAttr1AttrSetterCallback(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
+{
+    V8PerContextData* contextData = V8PerContextData::from(info.GetIsolate()->GetCurrentContext());
+    if (contextData && contextData->activityLogger()) {
+        v8::Handle<v8::Value> loggerArg[] = { value };
+        contextData->activityLogger()->log("TestObject.activityLoggedAttr1", 1, &loggerArg[0], "Setter");
+    }
+    TestObjV8Internal::activityLoggedAttr1AttrSetter(name, value, info);
+}
+
+static v8::Handle<v8::Value> activityLoggedAttr2AttrGetter(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+{
+    TestObj* imp = V8TestObj::toNative(info.Holder());
+    return v8Integer(imp->activityLoggedAttr2(), info.GetIsolate());
+}
+
+static v8::Handle<v8::Value> activityLoggedAttr2AttrGetterCallback(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+{
+    V8PerContextData* contextData = V8PerContextData::from(info.GetIsolate()->GetCurrentContext());
+    if (contextData && contextData->activityLogger())
+        contextData->activityLogger()->log("TestObject.activityLoggedAttr2", 0, 0, "Getter");
+    return TestObjV8Internal::activityLoggedAttr2AttrGetter(name, info);
+}
+
+static v8::Handle<v8::Value> activityLoggedAttr2AttrGetterForMainWorld(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+{
+    TestObj* imp = V8TestObj::toNative(info.Holder());
+    return v8Integer(imp->activityLoggedAttr2(), info.GetIsolate());
+}
+
+static v8::Handle<v8::Value> activityLoggedAttr2AttrGetterCallbackForMainWorld(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+{
+    V8PerContextData* contextData = V8PerContextData::from(info.GetIsolate()->GetCurrentContext());
+    if (contextData && contextData->activityLogger())
+        contextData->activityLogger()->log("TestObject.activityLoggedAttr2", 0, 0, "Getter");
+    return TestObjV8Internal::activityLoggedAttr2AttrGetterForMainWorld(name, info);
+}
+
+static void activityLoggedAttr2AttrSetter(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
+{
+    TestObj* imp = V8TestObj::toNative(info.Holder());
+    V8TRYCATCH_VOID(int, v, toInt32(value));
+    imp->setActivityLoggedAttr2(v);
+    return;
+}
+
+static void activityLoggedAttr2AttrSetterCallback(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
+{
+    V8PerContextData* contextData = V8PerContextData::from(info.GetIsolate()->GetCurrentContext());
+    if (contextData && contextData->activityLogger()) {
+        v8::Handle<v8::Value> loggerArg[] = { value };
+        contextData->activityLogger()->log("TestObject.activityLoggedAttr2", 1, &loggerArg[0], "Setter");
+    }
+    TestObjV8Internal::activityLoggedAttr2AttrSetter(name, value, info);
+}
+
+static void activityLoggedAttr2AttrSetterForMainWorld(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
+{
+    TestObj* imp = V8TestObj::toNative(info.Holder());
+    V8TRYCATCH_VOID(int, v, toInt32(value));
+    imp->setActivityLoggedAttr2(v);
+    return;
+}
+
+static void activityLoggedAttr2AttrSetterCallbackForMainWorld(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
+{
+    V8PerContextData* contextData = V8PerContextData::from(info.GetIsolate()->GetCurrentContext());
+    if (contextData && contextData->activityLogger()) {
+        v8::Handle<v8::Value> loggerArg[] = { value };
+        contextData->activityLogger()->log("TestObject.activityLoggedAttr2", 1, &loggerArg[0], "Setter");
+    }
+    TestObjV8Internal::activityLoggedAttr2AttrSetterForMainWorld(name, value, info);
+}
+
+static v8::Handle<v8::Value> activityLoggedInIsolatedWorldsAttrAttrGetter(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+{
+    TestObj* imp = V8TestObj::toNative(info.Holder());
+    return v8Integer(imp->activityLoggedInIsolatedWorldsAttr(), info.GetIsolate());
+}
+
+static v8::Handle<v8::Value> activityLoggedInIsolatedWorldsAttrAttrGetterCallback(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+{
+    V8PerContextData* contextData = V8PerContextData::from(info.GetIsolate()->GetCurrentContext());
+    if (contextData && contextData->activityLogger())
+        contextData->activityLogger()->log("TestObject.activityLoggedInIsolatedWorldsAttr", 0, 0, "Getter");
+    return TestObjV8Internal::activityLoggedInIsolatedWorldsAttrAttrGetter(name, info);
+}
+
+static v8::Handle<v8::Value> activityLoggedInIsolatedWorldsAttrAttrGetterForMainWorld(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+{
+    TestObj* imp = V8TestObj::toNative(info.Holder());
+    return v8Integer(imp->activityLoggedInIsolatedWorldsAttr(), info.GetIsolate());
+}
+
+static v8::Handle<v8::Value> activityLoggedInIsolatedWorldsAttrAttrGetterCallbackForMainWorld(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+{
+    return TestObjV8Internal::activityLoggedInIsolatedWorldsAttrAttrGetterForMainWorld(name, info);
+}
+
+static void activityLoggedInIsolatedWorldsAttrAttrSetter(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
+{
+    TestObj* imp = V8TestObj::toNative(info.Holder());
+    V8TRYCATCH_VOID(int, v, toInt32(value));
+    imp->setActivityLoggedInIsolatedWorldsAttr(v);
+    return;
+}
+
+static void activityLoggedInIsolatedWorldsAttrAttrSetterCallback(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
+{
+    V8PerContextData* contextData = V8PerContextData::from(info.GetIsolate()->GetCurrentContext());
+    if (contextData && contextData->activityLogger()) {
+        v8::Handle<v8::Value> loggerArg[] = { value };
+        contextData->activityLogger()->log("TestObject.activityLoggedInIsolatedWorldsAttr", 1, &loggerArg[0], "Setter");
+    }
+    TestObjV8Internal::activityLoggedInIsolatedWorldsAttrAttrSetter(name, value, info);
+}
+
+static void activityLoggedInIsolatedWorldsAttrAttrSetterForMainWorld(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
+{
+    TestObj* imp = V8TestObj::toNative(info.Holder());
+    V8TRYCATCH_VOID(int, v, toInt32(value));
+    imp->setActivityLoggedInIsolatedWorldsAttr(v);
+    return;
+}
+
+static void activityLoggedInIsolatedWorldsAttrAttrSetterCallbackForMainWorld(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
+{
+    TestObjV8Internal::activityLoggedInIsolatedWorldsAttrAttrSetterForMainWorld(name, value, info);
+}
+
+static v8::Handle<v8::Value> activityLoggedAttrSetter1AttrGetter(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+{
+    TestObj* imp = V8TestObj::toNative(info.Holder());
+    return v8Integer(imp->activityLoggedAttrSetter1(), info.GetIsolate());
+}
+
+static v8::Handle<v8::Value> activityLoggedAttrSetter1AttrGetterCallback(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+{
+    return TestObjV8Internal::activityLoggedAttrSetter1AttrGetter(name, info);
+}
+
+static void activityLoggedAttrSetter1AttrSetter(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
+{
+    TestObj* imp = V8TestObj::toNative(info.Holder());
+    V8TRYCATCH_VOID(int, v, toInt32(value));
+    imp->setActivityLoggedAttrSetter1(v);
+    return;
+}
+
+static void activityLoggedAttrSetter1AttrSetterCallback(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
+{
+    V8PerContextData* contextData = V8PerContextData::from(info.GetIsolate()->GetCurrentContext());
+    if (contextData && contextData->activityLogger()) {
+        v8::Handle<v8::Value> loggerArg[] = { value };
+        contextData->activityLogger()->log("TestObject.activityLoggedAttrSetter1", 1, &loggerArg[0], "Setter");
+    }
+    TestObjV8Internal::activityLoggedAttrSetter1AttrSetter(name, value, info);
+}
+
+static v8::Handle<v8::Value> activityLoggedAttrSetter2AttrGetter(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+{
+    TestObj* imp = V8TestObj::toNative(info.Holder());
+    return v8Integer(imp->activityLoggedAttrSetter2(), info.GetIsolate());
+}
+
+static v8::Handle<v8::Value> activityLoggedAttrSetter2AttrGetterCallback(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+{
+    return TestObjV8Internal::activityLoggedAttrSetter2AttrGetter(name, info);
+}
+
+static v8::Handle<v8::Value> activityLoggedAttrSetter2AttrGetterForMainWorld(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+{
+    TestObj* imp = V8TestObj::toNative(info.Holder());
+    return v8Integer(imp->activityLoggedAttrSetter2(), info.GetIsolate());
+}
+
+static v8::Handle<v8::Value> activityLoggedAttrSetter2AttrGetterCallbackForMainWorld(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+{
+    return TestObjV8Internal::activityLoggedAttrSetter2AttrGetterForMainWorld(name, info);
+}
+
+static void activityLoggedAttrSetter2AttrSetter(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
+{
+    TestObj* imp = V8TestObj::toNative(info.Holder());
+    V8TRYCATCH_VOID(int, v, toInt32(value));
+    imp->setActivityLoggedAttrSetter2(v);
+    return;
+}
+
+static void activityLoggedAttrSetter2AttrSetterCallback(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
+{
+    V8PerContextData* contextData = V8PerContextData::from(info.GetIsolate()->GetCurrentContext());
+    if (contextData && contextData->activityLogger()) {
+        v8::Handle<v8::Value> loggerArg[] = { value };
+        contextData->activityLogger()->log("TestObject.activityLoggedAttrSetter2", 1, &loggerArg[0], "Setter");
+    }
+    TestObjV8Internal::activityLoggedAttrSetter2AttrSetter(name, value, info);
+}
+
+static void activityLoggedAttrSetter2AttrSetterForMainWorld(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
+{
+    TestObj* imp = V8TestObj::toNative(info.Holder());
+    V8TRYCATCH_VOID(int, v, toInt32(value));
+    imp->setActivityLoggedAttrSetter2(v);
+    return;
+}
+
+static void activityLoggedAttrSetter2AttrSetterCallbackForMainWorld(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
+{
+    V8PerContextData* contextData = V8PerContextData::from(info.GetIsolate()->GetCurrentContext());
+    if (contextData && contextData->activityLogger()) {
+        v8::Handle<v8::Value> loggerArg[] = { value };
+        contextData->activityLogger()->log("TestObject.activityLoggedAttrSetter2", 1, &loggerArg[0], "Setter");
+    }
+    TestObjV8Internal::activityLoggedAttrSetter2AttrSetterForMainWorld(name, value, info);
+}
+
+static v8::Handle<v8::Value> activityLoggedInIsolatedWorldsAttrSetterAttrGetter(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+{
+    TestObj* imp = V8TestObj::toNative(info.Holder());
+    return v8Integer(imp->activityLoggedInIsolatedWorldsAttrSetter(), info.GetIsolate());
+}
+
+static v8::Handle<v8::Value> activityLoggedInIsolatedWorldsAttrSetterAttrGetterCallback(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+{
+    return TestObjV8Internal::activityLoggedInIsolatedWorldsAttrSetterAttrGetter(name, info);
+}
+
+static v8::Handle<v8::Value> activityLoggedInIsolatedWorldsAttrSetterAttrGetterForMainWorld(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+{
+    TestObj* imp = V8TestObj::toNative(info.Holder());
+    return v8Integer(imp->activityLoggedInIsolatedWorldsAttrSetter(), info.GetIsolate());
+}
+
+static v8::Handle<v8::Value> activityLoggedInIsolatedWorldsAttrSetterAttrGetterCallbackForMainWorld(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+{
+    return TestObjV8Internal::activityLoggedInIsolatedWorldsAttrSetterAttrGetterForMainWorld(name, info);
+}
+
+static void activityLoggedInIsolatedWorldsAttrSetterAttrSetter(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
+{
+    TestObj* imp = V8TestObj::toNative(info.Holder());
+    V8TRYCATCH_VOID(int, v, toInt32(value));
+    imp->setActivityLoggedInIsolatedWorldsAttrSetter(v);
+    return;
+}
+
+static void activityLoggedInIsolatedWorldsAttrSetterAttrSetterCallback(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
+{
+    V8PerContextData* contextData = V8PerContextData::from(info.GetIsolate()->GetCurrentContext());
+    if (contextData && contextData->activityLogger()) {
+        v8::Handle<v8::Value> loggerArg[] = { value };
+        contextData->activityLogger()->log("TestObject.activityLoggedInIsolatedWorldsAttrSetter", 1, &loggerArg[0], "Setter");
+    }
+    TestObjV8Internal::activityLoggedInIsolatedWorldsAttrSetterAttrSetter(name, value, info);
+}
+
+static void activityLoggedInIsolatedWorldsAttrSetterAttrSetterForMainWorld(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
+{
+    TestObj* imp = V8TestObj::toNative(info.Holder());
+    V8TRYCATCH_VOID(int, v, toInt32(value));
+    imp->setActivityLoggedInIsolatedWorldsAttrSetter(v);
+    return;
+}
+
+static void activityLoggedInIsolatedWorldsAttrSetterAttrSetterCallbackForMainWorld(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
+{
+    TestObjV8Internal::activityLoggedInIsolatedWorldsAttrSetterAttrSetterForMainWorld(name, value, info);
+}
+
+static v8::Handle<v8::Value> activityLoggedAttrGetter1AttrGetter(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+{
+    TestObj* imp = V8TestObj::toNative(info.Holder());
+    return v8Integer(imp->activityLoggedAttrGetter1(), info.GetIsolate());
+}
+
+static v8::Handle<v8::Value> activityLoggedAttrGetter1AttrGetterCallback(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+{
+    V8PerContextData* contextData = V8PerContextData::from(info.GetIsolate()->GetCurrentContext());
+    if (contextData && contextData->activityLogger())
+        contextData->activityLogger()->log("TestObject.activityLoggedAttrGetter1", 0, 0, "Getter");
+    return TestObjV8Internal::activityLoggedAttrGetter1AttrGetter(name, info);
+}
+
+static void activityLoggedAttrGetter1AttrSetter(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
+{
+    TestObj* imp = V8TestObj::toNative(info.Holder());
+    V8TRYCATCH_VOID(int, v, toInt32(value));
+    imp->setActivityLoggedAttrGetter1(v);
+    return;
+}
+
+static void activityLoggedAttrGetter1AttrSetterCallback(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
+{
+    TestObjV8Internal::activityLoggedAttrGetter1AttrSetter(name, value, info);
+}
+
+static v8::Handle<v8::Value> activityLoggedAttrGetter2AttrGetter(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+{
+    TestObj* imp = V8TestObj::toNative(info.Holder());
+    return v8Integer(imp->activityLoggedAttrGetter2(), info.GetIsolate());
+}
+
+static v8::Handle<v8::Value> activityLoggedAttrGetter2AttrGetterCallback(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+{
+    V8PerContextData* contextData = V8PerContextData::from(info.GetIsolate()->GetCurrentContext());
+    if (contextData && contextData->activityLogger())
+        contextData->activityLogger()->log("TestObject.activityLoggedAttrGetter2", 0, 0, "Getter");
+    return TestObjV8Internal::activityLoggedAttrGetter2AttrGetter(name, info);
+}
+
+static v8::Handle<v8::Value> activityLoggedAttrGetter2AttrGetterForMainWorld(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+{
+    TestObj* imp = V8TestObj::toNative(info.Holder());
+    return v8Integer(imp->activityLoggedAttrGetter2(), info.GetIsolate());
+}
+
+static v8::Handle<v8::Value> activityLoggedAttrGetter2AttrGetterCallbackForMainWorld(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+{
+    V8PerContextData* contextData = V8PerContextData::from(info.GetIsolate()->GetCurrentContext());
+    if (contextData && contextData->activityLogger())
+        contextData->activityLogger()->log("TestObject.activityLoggedAttrGetter2", 0, 0, "Getter");
+    return TestObjV8Internal::activityLoggedAttrGetter2AttrGetterForMainWorld(name, info);
+}
+
+static void activityLoggedAttrGetter2AttrSetter(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
+{
+    TestObj* imp = V8TestObj::toNative(info.Holder());
+    V8TRYCATCH_VOID(int, v, toInt32(value));
+    imp->setActivityLoggedAttrGetter2(v);
+    return;
+}
+
+static void activityLoggedAttrGetter2AttrSetterCallback(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
+{
+    TestObjV8Internal::activityLoggedAttrGetter2AttrSetter(name, value, info);
+}
+
+static void activityLoggedAttrGetter2AttrSetterForMainWorld(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
+{
+    TestObj* imp = V8TestObj::toNative(info.Holder());
+    V8TRYCATCH_VOID(int, v, toInt32(value));
+    imp->setActivityLoggedAttrGetter2(v);
+    return;
+}
+
+static void activityLoggedAttrGetter2AttrSetterCallbackForMainWorld(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
+{
+    TestObjV8Internal::activityLoggedAttrGetter2AttrSetterForMainWorld(name, value, info);
+}
+
+static v8::Handle<v8::Value> activityLoggedInIsolatedWorldsAttrGetterAttrGetter(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+{
+    TestObj* imp = V8TestObj::toNative(info.Holder());
+    return v8Integer(imp->activityLoggedInIsolatedWorldsAttrGetter(), info.GetIsolate());
+}
+
+static v8::Handle<v8::Value> activityLoggedInIsolatedWorldsAttrGetterAttrGetterCallback(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+{
+    V8PerContextData* contextData = V8PerContextData::from(info.GetIsolate()->GetCurrentContext());
+    if (contextData && contextData->activityLogger())
+        contextData->activityLogger()->log("TestObject.activityLoggedInIsolatedWorldsAttrGetter", 0, 0, "Getter");
+    return TestObjV8Internal::activityLoggedInIsolatedWorldsAttrGetterAttrGetter(name, info);
+}
+
+static v8::Handle<v8::Value> activityLoggedInIsolatedWorldsAttrGetterAttrGetterForMainWorld(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+{
+    TestObj* imp = V8TestObj::toNative(info.Holder());
+    return v8Integer(imp->activityLoggedInIsolatedWorldsAttrGetter(), info.GetIsolate());
+}
+
+static v8::Handle<v8::Value> activityLoggedInIsolatedWorldsAttrGetterAttrGetterCallbackForMainWorld(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+{
+    return TestObjV8Internal::activityLoggedInIsolatedWorldsAttrGetterAttrGetterForMainWorld(name, info);
+}
+
+static void activityLoggedInIsolatedWorldsAttrGetterAttrSetter(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
+{
+    TestObj* imp = V8TestObj::toNative(info.Holder());
+    V8TRYCATCH_VOID(int, v, toInt32(value));
+    imp->setActivityLoggedInIsolatedWorldsAttrGetter(v);
+    return;
+}
+
+static void activityLoggedInIsolatedWorldsAttrGetterAttrSetterCallback(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
+{
+    TestObjV8Internal::activityLoggedInIsolatedWorldsAttrGetterAttrSetter(name, value, info);
+}
+
+static void activityLoggedInIsolatedWorldsAttrGetterAttrSetterForMainWorld(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
+{
+    TestObj* imp = V8TestObj::toNative(info.Holder());
+    V8TRYCATCH_VOID(int, v, toInt32(value));
+    imp->setActivityLoggedInIsolatedWorldsAttrGetter(v);
+    return;
+}
+
+static void activityLoggedInIsolatedWorldsAttrGetterAttrSetterCallbackForMainWorld(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
+{
+    TestObjV8Internal::activityLoggedInIsolatedWorldsAttrGetterAttrSetterForMainWorld(name, value, info);
 }
 
 static v8::Handle<v8::Value> TestObjConstructorGetter(v8::Local<v8::String> name, const v8::AccessorInfo& info)
@@ -1917,7 +2334,7 @@ static v8::Handle<v8::Value> objMethodMethod(const v8::Arguments& args)
 
 static v8::Handle<v8::Value> objMethodMethodCallback(const v8::Arguments& args)
 {
-    FeatureObserver::observe(activeDOMWindow(BindingState::instance()), FeatureObserver::TestFeature);
+    UseCounter::observe(activeDOMWindow(BindingState::instance()), UseCounter::TestFeature);
     return TestObjV8Internal::objMethodMethod(args);
 }
 
@@ -2066,7 +2483,7 @@ static v8::Handle<v8::Value> methodWithExceptionMethodCallback(const v8::Argumen
 
 static v8::Handle<v8::Value> customMethodMethodCallback(const v8::Arguments& args)
 {
-    FeatureObserver::observe(activeDOMWindow(BindingState::instance()), FeatureObserver::CustomTestFeature);
+    UseCounter::observe(activeDOMWindow(BindingState::instance()), UseCounter::CustomTestFeature);
     return V8TestObj::customMethodMethodCustom(args);
 }
 
@@ -2289,19 +2706,6 @@ static v8::Handle<v8::Value> withScriptExecutionContextAndScriptStateWithSpacesM
 static v8::Handle<v8::Value> withScriptExecutionContextAndScriptStateWithSpacesMethodCallback(const v8::Arguments& args)
 {
     return TestObjV8Internal::withScriptExecutionContextAndScriptStateWithSpacesMethod(args);
-}
-
-static v8::Handle<v8::Value> withScriptArgumentsAndCallStackMethod(const v8::Arguments& args)
-{
-    TestObj* imp = V8TestObj::toNative(args.Holder());
-    RefPtr<ScriptArguments> scriptArguments(createScriptArguments(args, 0));
-    imp->withScriptArgumentsAndCallStack(scriptArguments.release());
-    return v8Undefined();
-}
-
-static v8::Handle<v8::Value> withScriptArgumentsAndCallStackMethodCallback(const v8::Arguments& args)
-{
-    return TestObjV8Internal::withScriptArgumentsAndCallStackMethod(args);
 }
 
 static v8::Handle<v8::Value> methodWithOptionalArgMethod(const v8::Arguments& args)
@@ -3277,6 +3681,185 @@ static v8::Handle<v8::Value> overloadedPerWorldMethodMethodCallbackForMainWorld(
     return TestObjV8Internal::overloadedPerWorldMethodMethodForMainWorld(args);
 }
 
+static v8::Handle<v8::Value> activityLoggedMethod1Method(const v8::Arguments& args)
+{
+    if (args.Length() < 1)
+        return throwNotEnoughArgumentsError(args.GetIsolate());
+    TestObj* imp = V8TestObj::toNative(args.Holder());
+    V8TRYCATCH(int, longArg, toInt32(args[0]));
+    imp->activityLoggedMethod1(longArg);
+    return v8Undefined();
+}
+
+static v8::Handle<v8::Value> activityLoggedMethod1MethodCallback(const v8::Arguments& args)
+{
+    V8PerContextData* contextData = V8PerContextData::from(args.GetIsolate()->GetCurrentContext());
+    if (contextData && contextData->activityLogger()) {
+        Vector<v8::Handle<v8::Value> > loggerArgs = toVectorOfArguments(args);
+        contextData->activityLogger()->log("TestObject.activityLoggedMethod1", args.Length(), loggerArgs.data(), "Method");
+    }
+    return TestObjV8Internal::activityLoggedMethod1Method(args);
+}
+
+static v8::Handle<v8::Value> activityLoggedMethod2Method(const v8::Arguments& args)
+{
+    if (args.Length() < 1)
+        return throwNotEnoughArgumentsError(args.GetIsolate());
+    TestObj* imp = V8TestObj::toNative(args.Holder());
+    V8TRYCATCH(int, longArg, toInt32(args[0]));
+    imp->activityLoggedMethod2(longArg);
+    return v8Undefined();
+}
+
+static v8::Handle<v8::Value> activityLoggedMethod2MethodForMainWorld(const v8::Arguments& args)
+{
+    if (args.Length() < 1)
+        return throwNotEnoughArgumentsError(args.GetIsolate());
+    TestObj* imp = V8TestObj::toNative(args.Holder());
+    V8TRYCATCH(int, longArg, toInt32(args[0]));
+    imp->activityLoggedMethod2(longArg);
+    return v8Undefined();
+}
+
+static v8::Handle<v8::Value> activityLoggedMethod2MethodCallback(const v8::Arguments& args)
+{
+    V8PerContextData* contextData = V8PerContextData::from(args.GetIsolate()->GetCurrentContext());
+    if (contextData && contextData->activityLogger()) {
+        Vector<v8::Handle<v8::Value> > loggerArgs = toVectorOfArguments(args);
+        contextData->activityLogger()->log("TestObject.activityLoggedMethod2", args.Length(), loggerArgs.data(), "Method");
+    }
+    return TestObjV8Internal::activityLoggedMethod2Method(args);
+}
+
+static v8::Handle<v8::Value> activityLoggedMethod2MethodCallbackForMainWorld(const v8::Arguments& args)
+{
+    V8PerContextData* contextData = V8PerContextData::from(args.GetIsolate()->GetCurrentContext());
+    if (contextData && contextData->activityLogger()) {
+        Vector<v8::Handle<v8::Value> > loggerArgs = toVectorOfArguments(args);
+        contextData->activityLogger()->log("TestObject.activityLoggedMethod2", args.Length(), loggerArgs.data(), "Method");
+    }
+    return TestObjV8Internal::activityLoggedMethod2MethodForMainWorld(args);
+}
+
+static v8::Handle<v8::Value> activityLoggedInIsolatedWorldMethodMethod(const v8::Arguments& args)
+{
+    if (args.Length() < 1)
+        return throwNotEnoughArgumentsError(args.GetIsolate());
+    TestObj* imp = V8TestObj::toNative(args.Holder());
+    V8TRYCATCH(int, longArg, toInt32(args[0]));
+    imp->activityLoggedInIsolatedWorldMethod(longArg);
+    return v8Undefined();
+}
+
+static v8::Handle<v8::Value> activityLoggedInIsolatedWorldMethodMethodForMainWorld(const v8::Arguments& args)
+{
+    if (args.Length() < 1)
+        return throwNotEnoughArgumentsError(args.GetIsolate());
+    TestObj* imp = V8TestObj::toNative(args.Holder());
+    V8TRYCATCH(int, longArg, toInt32(args[0]));
+    imp->activityLoggedInIsolatedWorldMethod(longArg);
+    return v8Undefined();
+}
+
+static v8::Handle<v8::Value> activityLoggedInIsolatedWorldMethodMethodCallback(const v8::Arguments& args)
+{
+    V8PerContextData* contextData = V8PerContextData::from(args.GetIsolate()->GetCurrentContext());
+    if (contextData && contextData->activityLogger()) {
+        Vector<v8::Handle<v8::Value> > loggerArgs = toVectorOfArguments(args);
+        contextData->activityLogger()->log("TestObject.activityLoggedInIsolatedWorldMethod", args.Length(), loggerArgs.data(), "Method");
+    }
+    return TestObjV8Internal::activityLoggedInIsolatedWorldMethodMethod(args);
+}
+
+static v8::Handle<v8::Value> activityLoggedInIsolatedWorldMethodMethodCallbackForMainWorld(const v8::Arguments& args)
+{
+    return TestObjV8Internal::activityLoggedInIsolatedWorldMethodMethodForMainWorld(args);
+}
+
+static v8::Handle<v8::Value> overloadedActivityLoggedMethod1Method(const v8::Arguments& args)
+{
+    if (args.Length() < 1)
+        return throwNotEnoughArgumentsError(args.GetIsolate());
+    TestObj* imp = V8TestObj::toNative(args.Holder());
+    V8TRYCATCH(int, longArg, toInt32(args[0]));
+    imp->overloadedActivityLoggedMethod(longArg);
+    return v8Undefined();
+}
+
+static v8::Handle<v8::Value> overloadedActivityLoggedMethod1MethodForMainWorld(const v8::Arguments& args)
+{
+    if (args.Length() < 1)
+        return throwNotEnoughArgumentsError(args.GetIsolate());
+    TestObj* imp = V8TestObj::toNative(args.Holder());
+    V8TRYCATCH(int, longArg, toInt32(args[0]));
+    imp->overloadedActivityLoggedMethod(longArg);
+    return v8Undefined();
+}
+
+static v8::Handle<v8::Value> overloadedActivityLoggedMethod2Method(const v8::Arguments& args)
+{
+    if (args.Length() < 2)
+        return throwNotEnoughArgumentsError(args.GetIsolate());
+    TestObj* imp = V8TestObj::toNative(args.Holder());
+    V8TRYCATCH_FOR_V8STRINGRESOURCE(V8StringResource<>, strArg, args[0]);
+    V8TRYCATCH(int, longArg, toInt32(args[1]));
+    imp->overloadedActivityLoggedMethod(strArg, longArg);
+    return v8Undefined();
+}
+
+static v8::Handle<v8::Value> overloadedActivityLoggedMethod2MethodForMainWorld(const v8::Arguments& args)
+{
+    if (args.Length() < 2)
+        return throwNotEnoughArgumentsError(args.GetIsolate());
+    TestObj* imp = V8TestObj::toNative(args.Holder());
+    V8TRYCATCH_FOR_V8STRINGRESOURCE(V8StringResource<>, strArg, args[0]);
+    V8TRYCATCH(int, longArg, toInt32(args[1]));
+    imp->overloadedActivityLoggedMethod(strArg, longArg);
+    return v8Undefined();
+}
+
+static v8::Handle<v8::Value> overloadedActivityLoggedMethodMethod(const v8::Arguments& args)
+{
+    if (args.Length() == 1)
+        return overloadedActivityLoggedMethod1Method(args);
+    if (args.Length() == 2)
+        return overloadedActivityLoggedMethod2Method(args);
+    if (args.Length() < 1)
+        return throwNotEnoughArgumentsError(args.GetIsolate());
+    return throwTypeError(0, args.GetIsolate());
+}
+
+static v8::Handle<v8::Value> overloadedActivityLoggedMethodMethodForMainWorld(const v8::Arguments& args)
+{
+    if (args.Length() == 1)
+        return overloadedActivityLoggedMethod1MethodForMainWorld(args);
+    if (args.Length() == 2)
+        return overloadedActivityLoggedMethod2MethodForMainWorld(args);
+    if (args.Length() < 1)
+        return throwNotEnoughArgumentsError(args.GetIsolate());
+    return throwTypeError(0, args.GetIsolate());
+}
+
+static v8::Handle<v8::Value> overloadedActivityLoggedMethodMethodCallback(const v8::Arguments& args)
+{
+    V8PerContextData* contextData = V8PerContextData::from(args.GetIsolate()->GetCurrentContext());
+    if (contextData && contextData->activityLogger()) {
+        Vector<v8::Handle<v8::Value> > loggerArgs = toVectorOfArguments(args);
+        contextData->activityLogger()->log("TestObject.overloadedActivityLoggedMethod", args.Length(), loggerArgs.data(), "Method");
+    }
+    return TestObjV8Internal::overloadedActivityLoggedMethodMethod(args);
+}
+
+static v8::Handle<v8::Value> overloadedActivityLoggedMethodMethodCallbackForMainWorld(const v8::Arguments& args)
+{
+    V8PerContextData* contextData = V8PerContextData::from(args.GetIsolate()->GetCurrentContext());
+    if (contextData && contextData->activityLogger()) {
+        Vector<v8::Handle<v8::Value> > loggerArgs = toVectorOfArguments(args);
+        contextData->activityLogger()->log("TestObject.overloadedActivityLoggedMethod", args.Length(), loggerArgs.data(), "Method");
+    }
+    return TestObjV8Internal::overloadedActivityLoggedMethodMethodForMainWorld(args);
+}
+
 static v8::Handle<v8::Value> constructor(const v8::Arguments& args)
 {
     if (args.Length() < 1)
@@ -3371,8 +3954,6 @@ static const V8DOMConfiguration::BatchedAttribute V8TestObjAttrs[] = {
     {"withScriptExecutionContextAndScriptStateAttributeRaises", TestObjV8Internal::withScriptExecutionContextAndScriptStateAttributeRaisesAttrGetterCallback, TestObjV8Internal::withScriptExecutionContextAndScriptStateAttributeRaisesAttrSetterCallback, 0, 0, 0 /* no data */, static_cast<v8::AccessControl>(v8::DEFAULT), static_cast<v8::PropertyAttribute>(v8::None), 0 /* on instance */},
     // Attribute 'withScriptExecutionContextAndScriptStateWithSpacesAttribute' (Type: 'attribute' ExtAttr: 'CallWith')
     {"withScriptExecutionContextAndScriptStateWithSpacesAttribute", TestObjV8Internal::withScriptExecutionContextAndScriptStateWithSpacesAttributeAttrGetterCallback, TestObjV8Internal::withScriptExecutionContextAndScriptStateWithSpacesAttributeAttrSetterCallback, 0, 0, 0 /* no data */, static_cast<v8::AccessControl>(v8::DEFAULT), static_cast<v8::PropertyAttribute>(v8::None), 0 /* on instance */},
-    // Attribute 'withScriptArgumentsAndCallStackAttribute' (Type: 'attribute' ExtAttr: 'CallWith')
-    {"withScriptArgumentsAndCallStackAttribute", TestObjV8Internal::withScriptArgumentsAndCallStackAttributeAttrGetterCallback, TestObjV8Internal::withScriptArgumentsAndCallStackAttributeAttrSetterCallback, 0, 0, 0 /* no data */, static_cast<v8::AccessControl>(v8::DEFAULT), static_cast<v8::PropertyAttribute>(v8::None), 0 /* on instance */},
     // Attribute 'enforcedRangeLongAttr' (Type: 'attribute' ExtAttr: 'EnforceRange')
     {"enforcedRangeLongAttr", TestObjV8Internal::enforcedRangeLongAttrAttrGetterCallback, TestObjV8Internal::enforcedRangeLongAttrAttrSetterCallback, 0, 0, 0 /* no data */, static_cast<v8::AccessControl>(v8::DEFAULT), static_cast<v8::PropertyAttribute>(v8::None), 0 /* on instance */},
     // Attribute 'enforcedRangeUnsignedLongAttr' (Type: 'attribute' ExtAttr: 'EnforceRange')
@@ -3449,62 +4030,83 @@ static const V8DOMConfiguration::BatchedAttribute V8TestObjAttrs[] = {
     {"perWorldReadOnlyAttribute", TestObjV8Internal::perWorldReadOnlyAttributeAttrGetterCallback, 0, TestObjV8Internal::perWorldReadOnlyAttributeAttrGetterCallbackForMainWorld, 0, 0 /* no data */, static_cast<v8::AccessControl>(v8::DEFAULT), static_cast<v8::PropertyAttribute>(v8::None), 0 /* on instance */},
     // Attribute 'perWorldAttribute' (Type: 'attribute' ExtAttr: 'PerWorldBindings')
     {"perWorldAttribute", TestObjV8Internal::perWorldAttributeAttrGetterCallback, TestObjV8Internal::perWorldAttributeAttrSetterCallback, TestObjV8Internal::perWorldAttributeAttrGetterCallbackForMainWorld, TestObjV8Internal::perWorldAttributeAttrSetterCallbackForMainWorld, 0 /* no data */, static_cast<v8::AccessControl>(v8::DEFAULT), static_cast<v8::PropertyAttribute>(v8::None), 0 /* on instance */},
+    // Attribute 'activityLoggedAttr1' (Type: 'attribute' ExtAttr: 'ActivityLog')
+    {"activityLoggedAttr1", TestObjV8Internal::activityLoggedAttr1AttrGetterCallback, TestObjV8Internal::activityLoggedAttr1AttrSetterCallback, 0, 0, 0 /* no data */, static_cast<v8::AccessControl>(v8::DEFAULT), static_cast<v8::PropertyAttribute>(v8::None), 0 /* on instance */},
+    // Attribute 'activityLoggedAttr2' (Type: 'attribute' ExtAttr: 'PerWorldBindings ActivityLog')
+    {"activityLoggedAttr2", TestObjV8Internal::activityLoggedAttr2AttrGetterCallback, TestObjV8Internal::activityLoggedAttr2AttrSetterCallback, TestObjV8Internal::activityLoggedAttr2AttrGetterCallbackForMainWorld, TestObjV8Internal::activityLoggedAttr2AttrSetterCallbackForMainWorld, 0 /* no data */, static_cast<v8::AccessControl>(v8::DEFAULT), static_cast<v8::PropertyAttribute>(v8::None), 0 /* on instance */},
+    // Attribute 'activityLoggedInIsolatedWorldsAttr' (Type: 'attribute' ExtAttr: 'PerWorldBindings ActivityLog')
+    {"activityLoggedInIsolatedWorldsAttr", TestObjV8Internal::activityLoggedInIsolatedWorldsAttrAttrGetterCallback, TestObjV8Internal::activityLoggedInIsolatedWorldsAttrAttrSetterCallback, TestObjV8Internal::activityLoggedInIsolatedWorldsAttrAttrGetterCallbackForMainWorld, TestObjV8Internal::activityLoggedInIsolatedWorldsAttrAttrSetterCallbackForMainWorld, 0 /* no data */, static_cast<v8::AccessControl>(v8::DEFAULT), static_cast<v8::PropertyAttribute>(v8::None), 0 /* on instance */},
+    // Attribute 'activityLoggedAttrSetter1' (Type: 'attribute' ExtAttr: 'ActivityLog')
+    {"activityLoggedAttrSetter1", TestObjV8Internal::activityLoggedAttrSetter1AttrGetterCallback, TestObjV8Internal::activityLoggedAttrSetter1AttrSetterCallback, 0, 0, 0 /* no data */, static_cast<v8::AccessControl>(v8::DEFAULT), static_cast<v8::PropertyAttribute>(v8::None), 0 /* on instance */},
+    // Attribute 'activityLoggedAttrSetter2' (Type: 'attribute' ExtAttr: 'PerWorldBindings ActivityLog')
+    {"activityLoggedAttrSetter2", TestObjV8Internal::activityLoggedAttrSetter2AttrGetterCallback, TestObjV8Internal::activityLoggedAttrSetter2AttrSetterCallback, TestObjV8Internal::activityLoggedAttrSetter2AttrGetterCallbackForMainWorld, TestObjV8Internal::activityLoggedAttrSetter2AttrSetterCallbackForMainWorld, 0 /* no data */, static_cast<v8::AccessControl>(v8::DEFAULT), static_cast<v8::PropertyAttribute>(v8::None), 0 /* on instance */},
+    // Attribute 'activityLoggedInIsolatedWorldsAttrSetter' (Type: 'attribute' ExtAttr: 'PerWorldBindings ActivityLog')
+    {"activityLoggedInIsolatedWorldsAttrSetter", TestObjV8Internal::activityLoggedInIsolatedWorldsAttrSetterAttrGetterCallback, TestObjV8Internal::activityLoggedInIsolatedWorldsAttrSetterAttrSetterCallback, TestObjV8Internal::activityLoggedInIsolatedWorldsAttrSetterAttrGetterCallbackForMainWorld, TestObjV8Internal::activityLoggedInIsolatedWorldsAttrSetterAttrSetterCallbackForMainWorld, 0 /* no data */, static_cast<v8::AccessControl>(v8::DEFAULT), static_cast<v8::PropertyAttribute>(v8::None), 0 /* on instance */},
+    // Attribute 'activityLoggedAttrGetter1' (Type: 'attribute' ExtAttr: 'ActivityLog')
+    {"activityLoggedAttrGetter1", TestObjV8Internal::activityLoggedAttrGetter1AttrGetterCallback, TestObjV8Internal::activityLoggedAttrGetter1AttrSetterCallback, 0, 0, 0 /* no data */, static_cast<v8::AccessControl>(v8::DEFAULT), static_cast<v8::PropertyAttribute>(v8::None), 0 /* on instance */},
+    // Attribute 'activityLoggedAttrGetter2' (Type: 'attribute' ExtAttr: 'PerWorldBindings ActivityLog')
+    {"activityLoggedAttrGetter2", TestObjV8Internal::activityLoggedAttrGetter2AttrGetterCallback, TestObjV8Internal::activityLoggedAttrGetter2AttrSetterCallback, TestObjV8Internal::activityLoggedAttrGetter2AttrGetterCallbackForMainWorld, TestObjV8Internal::activityLoggedAttrGetter2AttrSetterCallbackForMainWorld, 0 /* no data */, static_cast<v8::AccessControl>(v8::DEFAULT), static_cast<v8::PropertyAttribute>(v8::None), 0 /* on instance */},
+    // Attribute 'activityLoggedInIsolatedWorldsAttrGetter' (Type: 'attribute' ExtAttr: 'PerWorldBindings ActivityLog')
+    {"activityLoggedInIsolatedWorldsAttrGetter", TestObjV8Internal::activityLoggedInIsolatedWorldsAttrGetterAttrGetterCallback, TestObjV8Internal::activityLoggedInIsolatedWorldsAttrGetterAttrSetterCallback, TestObjV8Internal::activityLoggedInIsolatedWorldsAttrGetterAttrGetterCallbackForMainWorld, TestObjV8Internal::activityLoggedInIsolatedWorldsAttrGetterAttrSetterCallbackForMainWorld, 0 /* no data */, static_cast<v8::AccessControl>(v8::DEFAULT), static_cast<v8::PropertyAttribute>(v8::None), 0 /* on instance */},
 };
 
 static const V8DOMConfiguration::BatchedMethod V8TestObjMethods[] = {
-    {"voidMethod", TestObjV8Internal::voidMethodMethodCallback, 0},
-    {"longMethod", TestObjV8Internal::longMethodMethodCallback, 0},
-    {"objMethod", TestObjV8Internal::objMethodMethodCallback, 0},
-    {"methodReturningSequence", TestObjV8Internal::methodReturningSequenceMethodCallback, 0},
-    {"serializedValue", TestObjV8Internal::serializedValueMethodCallback, 0},
-    {"optionsObject", TestObjV8Internal::optionsObjectMethodCallback, 0},
-    {"methodWithException", TestObjV8Internal::methodWithExceptionMethodCallback, 0},
-    {"customMethod", TestObjV8Internal::customMethodMethodCallback, 0},
-    {"customMethodWithArgs", TestObjV8Internal::customMethodWithArgsMethodCallback, 0},
-    {"addEventListener", TestObjV8Internal::addEventListenerMethodCallback, 0},
-    {"removeEventListener", TestObjV8Internal::removeEventListenerMethodCallback, 0},
-    {"withScriptStateVoid", TestObjV8Internal::withScriptStateVoidMethodCallback, 0},
-    {"withScriptStateObj", TestObjV8Internal::withScriptStateObjMethodCallback, 0},
-    {"withScriptStateVoidException", TestObjV8Internal::withScriptStateVoidExceptionMethodCallback, 0},
-    {"withScriptStateObjException", TestObjV8Internal::withScriptStateObjExceptionMethodCallback, 0},
-    {"withScriptExecutionContext", TestObjV8Internal::withScriptExecutionContextMethodCallback, 0},
-    {"withScriptExecutionContextAndScriptState", TestObjV8Internal::withScriptExecutionContextAndScriptStateMethodCallback, 0},
-    {"withScriptExecutionContextAndScriptStateObjException", TestObjV8Internal::withScriptExecutionContextAndScriptStateObjExceptionMethodCallback, 0},
-    {"withScriptExecutionContextAndScriptStateWithSpaces", TestObjV8Internal::withScriptExecutionContextAndScriptStateWithSpacesMethodCallback, 0},
-    {"withScriptArgumentsAndCallStack", TestObjV8Internal::withScriptArgumentsAndCallStackMethodCallback, 0},
-    {"methodWithOptionalArg", TestObjV8Internal::methodWithOptionalArgMethodCallback, 0},
-    {"methodWithNonOptionalArgAndOptionalArg", TestObjV8Internal::methodWithNonOptionalArgAndOptionalArgMethodCallback, 0},
-    {"methodWithNonOptionalArgAndTwoOptionalArgs", TestObjV8Internal::methodWithNonOptionalArgAndTwoOptionalArgsMethodCallback, 0},
-    {"methodWithOptionalString", TestObjV8Internal::methodWithOptionalStringMethodCallback, 0},
-    {"methodWithOptionalStringIsUndefined", TestObjV8Internal::methodWithOptionalStringIsUndefinedMethodCallback, 0},
-    {"methodWithOptionalStringIsNullString", TestObjV8Internal::methodWithOptionalStringIsNullStringMethodCallback, 0},
-    {"methodWithCallbackArg", TestObjV8Internal::methodWithCallbackArgMethodCallback, 0},
-    {"methodWithNonCallbackArgAndCallbackArg", TestObjV8Internal::methodWithNonCallbackArgAndCallbackArgMethodCallback, 0},
-    {"methodWithCallbackAndOptionalArg", TestObjV8Internal::methodWithCallbackAndOptionalArgMethodCallback, 0},
-    {"methodWithEnforceRangeInt32", TestObjV8Internal::methodWithEnforceRangeInt32MethodCallback, 0},
-    {"methodWithEnforceRangeUInt32", TestObjV8Internal::methodWithEnforceRangeUInt32MethodCallback, 0},
-    {"methodWithEnforceRangeInt64", TestObjV8Internal::methodWithEnforceRangeInt64MethodCallback, 0},
-    {"methodWithEnforceRangeUInt64", TestObjV8Internal::methodWithEnforceRangeUInt64MethodCallback, 0},
+    {"voidMethod", TestObjV8Internal::voidMethodMethodCallback, 0, 0},
+    {"longMethod", TestObjV8Internal::longMethodMethodCallback, 0, 0},
+    {"objMethod", TestObjV8Internal::objMethodMethodCallback, 0, 0},
+    {"methodReturningSequence", TestObjV8Internal::methodReturningSequenceMethodCallback, 0, 1},
+    {"serializedValue", TestObjV8Internal::serializedValueMethodCallback, 0, 1},
+    {"optionsObject", TestObjV8Internal::optionsObjectMethodCallback, 0, 1},
+    {"methodWithException", TestObjV8Internal::methodWithExceptionMethodCallback, 0, 0},
+    {"customMethod", TestObjV8Internal::customMethodMethodCallback, 0, 0},
+    {"customMethodWithArgs", TestObjV8Internal::customMethodWithArgsMethodCallback, 0, 3},
+    {"addEventListener", TestObjV8Internal::addEventListenerMethodCallback, 0, 2},
+    {"removeEventListener", TestObjV8Internal::removeEventListenerMethodCallback, 0, 2},
+    {"withScriptStateVoid", TestObjV8Internal::withScriptStateVoidMethodCallback, 0, 0},
+    {"withScriptStateObj", TestObjV8Internal::withScriptStateObjMethodCallback, 0, 0},
+    {"withScriptStateVoidException", TestObjV8Internal::withScriptStateVoidExceptionMethodCallback, 0, 0},
+    {"withScriptStateObjException", TestObjV8Internal::withScriptStateObjExceptionMethodCallback, 0, 0},
+    {"withScriptExecutionContext", TestObjV8Internal::withScriptExecutionContextMethodCallback, 0, 0},
+    {"withScriptExecutionContextAndScriptState", TestObjV8Internal::withScriptExecutionContextAndScriptStateMethodCallback, 0, 0},
+    {"withScriptExecutionContextAndScriptStateObjException", TestObjV8Internal::withScriptExecutionContextAndScriptStateObjExceptionMethodCallback, 0, 0},
+    {"withScriptExecutionContextAndScriptStateWithSpaces", TestObjV8Internal::withScriptExecutionContextAndScriptStateWithSpacesMethodCallback, 0, 0},
+    {"methodWithOptionalArg", TestObjV8Internal::methodWithOptionalArgMethodCallback, 0, 0},
+    {"methodWithNonOptionalArgAndOptionalArg", TestObjV8Internal::methodWithNonOptionalArgAndOptionalArgMethodCallback, 0, 1},
+    {"methodWithNonOptionalArgAndTwoOptionalArgs", TestObjV8Internal::methodWithNonOptionalArgAndTwoOptionalArgsMethodCallback, 0, 1},
+    {"methodWithOptionalString", TestObjV8Internal::methodWithOptionalStringMethodCallback, 0, 0},
+    {"methodWithOptionalStringIsUndefined", TestObjV8Internal::methodWithOptionalStringIsUndefinedMethodCallback, 0, 0},
+    {"methodWithOptionalStringIsNullString", TestObjV8Internal::methodWithOptionalStringIsNullStringMethodCallback, 0, 0},
+    {"methodWithCallbackArg", TestObjV8Internal::methodWithCallbackArgMethodCallback, 0, 1},
+    {"methodWithNonCallbackArgAndCallbackArg", TestObjV8Internal::methodWithNonCallbackArgAndCallbackArgMethodCallback, 0, 2},
+    {"methodWithCallbackAndOptionalArg", TestObjV8Internal::methodWithCallbackAndOptionalArgMethodCallback, 0, 0},
+    {"methodWithEnforceRangeInt32", TestObjV8Internal::methodWithEnforceRangeInt32MethodCallback, 0, 1},
+    {"methodWithEnforceRangeUInt32", TestObjV8Internal::methodWithEnforceRangeUInt32MethodCallback, 0, 1},
+    {"methodWithEnforceRangeInt64", TestObjV8Internal::methodWithEnforceRangeInt64MethodCallback, 0, 1},
+    {"methodWithEnforceRangeUInt64", TestObjV8Internal::methodWithEnforceRangeUInt64MethodCallback, 0, 1},
 #if ENABLE(Condition1)
-    {"conditionalMethod1", TestObjV8Internal::conditionalMethod1MethodCallback, 0},
+    {"conditionalMethod1", TestObjV8Internal::conditionalMethod1MethodCallback, 0, 0},
 #endif
 #if ENABLE(Condition1) && ENABLE(Condition2)
-    {"conditionalMethod2", TestObjV8Internal::conditionalMethod2MethodCallback, 0},
+    {"conditionalMethod2", TestObjV8Internal::conditionalMethod2MethodCallback, 0, 0},
 #endif
 #if ENABLE(Condition1) || ENABLE(Condition2)
-    {"conditionalMethod3", TestObjV8Internal::conditionalMethod3MethodCallback, 0},
+    {"conditionalMethod3", TestObjV8Internal::conditionalMethod3MethodCallback, 0, 0},
 #endif
-    {"overloadedMethod", TestObjV8Internal::overloadedMethodMethodCallback, 0},
-    {"classMethodWithClamp", TestObjV8Internal::classMethodWithClampMethodCallback, 0},
-    {"getSVGDocument", TestObjV8Internal::getSVGDocumentMethodCallback, 0},
-    {"mutablePointFunction", TestObjV8Internal::mutablePointFunctionMethodCallback, 0},
-    {"immutablePointFunction", TestObjV8Internal::immutablePointFunctionMethodCallback, 0},
-    {"orange", TestObjV8Internal::orangeMethodCallback, 0},
-    {"strictFunction", TestObjV8Internal::strictFunctionMethodCallback, 0},
-    {"variadicStringMethod", TestObjV8Internal::variadicStringMethodMethodCallback, 0},
-    {"variadicDoubleMethod", TestObjV8Internal::variadicDoubleMethodMethodCallback, 0},
-    {"perWorldMethod", TestObjV8Internal::perWorldMethodMethodCallback, TestObjV8Internal::perWorldMethodMethodCallbackForMainWorld},
-    {"overloadedPerWorldMethod", TestObjV8Internal::overloadedPerWorldMethodMethodCallback, TestObjV8Internal::overloadedPerWorldMethodMethodCallbackForMainWorld},
+    {"overloadedMethod", TestObjV8Internal::overloadedMethodMethodCallback, 0, 2},
+    {"classMethodWithClamp", TestObjV8Internal::classMethodWithClampMethodCallback, 0, 2},
+    {"getSVGDocument", TestObjV8Internal::getSVGDocumentMethodCallback, 0, 0},
+    {"mutablePointFunction", TestObjV8Internal::mutablePointFunctionMethodCallback, 0, 0},
+    {"immutablePointFunction", TestObjV8Internal::immutablePointFunctionMethodCallback, 0, 0},
+    {"orange", TestObjV8Internal::orangeMethodCallback, 0, 0},
+    {"strictFunction", TestObjV8Internal::strictFunctionMethodCallback, 0, 3},
+    {"variadicStringMethod", TestObjV8Internal::variadicStringMethodMethodCallback, 0, 2},
+    {"variadicDoubleMethod", TestObjV8Internal::variadicDoubleMethodMethodCallback, 0, 2},
+    {"perWorldMethod", TestObjV8Internal::perWorldMethodMethodCallback, TestObjV8Internal::perWorldMethodMethodCallbackForMainWorld, 0},
+    {"overloadedPerWorldMethod", TestObjV8Internal::overloadedPerWorldMethodMethodCallback, TestObjV8Internal::overloadedPerWorldMethodMethodCallbackForMainWorld, 1},
+    {"activityLoggedMethod1", TestObjV8Internal::activityLoggedMethod1MethodCallback, 0, 1},
+    {"activityLoggedMethod2", TestObjV8Internal::activityLoggedMethod2MethodCallback, TestObjV8Internal::activityLoggedMethod2MethodCallbackForMainWorld, 1},
+    {"activityLoggedInIsolatedWorldMethod", TestObjV8Internal::activityLoggedInIsolatedWorldMethodMethodCallback, TestObjV8Internal::activityLoggedInIsolatedWorldMethodMethodCallbackForMainWorld, 1},
+    {"overloadedActivityLoggedMethod", TestObjV8Internal::overloadedActivityLoggedMethodMethodCallback, TestObjV8Internal::overloadedActivityLoggedMethodMethodCallbackForMainWorld, 1},
 };
 
 static const V8DOMConfiguration::BatchedConstant V8TestObjConsts[] = {
@@ -3563,11 +4165,11 @@ static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestObjTemplate(v8::Persi
         V8TestObjMethods, WTF_ARRAY_LENGTH(V8TestObjMethods), isolate, currentWorldType);
     UNUSED_PARAM(defaultSignature); // In some cases, it will not be used.
     desc->SetCallHandler(V8TestObj::constructorCallback);
+    desc->SetLength(1);
     v8::Local<v8::ObjectTemplate> instance = desc->InstanceTemplate();
     v8::Local<v8::ObjectTemplate> proto = desc->PrototypeTemplate();
     UNUSED_PARAM(instance); // In some cases, it will not be used.
     UNUSED_PARAM(proto); // In some cases, it will not be used.
-    
     if (RuntimeEnabledFeatures::enabledAtRuntimeAttr1Enabled()) {
         static const V8DOMConfiguration::BatchedAttribute attrData =\
         // Attribute 'enabledAtRuntimeAttr1' (Type: 'attribute' ExtAttr: 'EnabledAtRuntime')

@@ -30,11 +30,11 @@
 
 #if ENABLE(WEB_AUDIO)
 
-#include "ChannelMergerNode.h"
+#include "modules/webaudio/ChannelMergerNode.h"
 
-#include "AudioContext.h"
-#include "AudioNodeInput.h"
-#include "AudioNodeOutput.h"
+#include "modules/webaudio/AudioContext.h"
+#include "modules/webaudio/AudioNodeInput.h"
+#include "modules/webaudio/AudioNodeOutput.h"
 
 const unsigned DefaultNumberOfOutputChannels = 1;
 
@@ -111,7 +111,7 @@ void ChannelMergerNode::checkNumberOfChannelsForInput(AudioNodeInput* input)
     for (unsigned i = 0; i < numberOfInputs(); ++i) {
         AudioNodeInput* input = this->input(i);
         if (input->isConnected())
-            numberOfOutputChannels += input->bus()->numberOfChannels();
+            numberOfOutputChannels += input->numberOfChannels();
     }
 
     // Set the correct number of channels on the output

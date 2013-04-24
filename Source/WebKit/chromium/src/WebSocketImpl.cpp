@@ -33,6 +33,8 @@
 
 #include "Document.h"
 #include "KURL.h"
+#include "MainThreadWebSocketChannel.h"
+#include "RuntimeEnabledFeatures.h"
 #include "WebArrayBuffer.h"
 #include "WebDocument.h"
 #include "WebSocketChannel.h"
@@ -51,7 +53,11 @@ WebSocketImpl::WebSocketImpl(const WebDocument& document, WebSocketClient* clien
     : m_client(client)
     , m_binaryType(BinaryTypeBlob)
 {
-    m_private = WebSocketChannel::create(PassRefPtr<Document>(document).get(), this);
+    if (RuntimeEnabledFeatures::experimentalWebSocketEnabled()) {
+        // FIXME: Create an "experimental" WebSocketChannel instead of a MainThreadWebSocketChannel.
+        m_private = MainThreadWebSocketChannel::create(PassRefPtr<Document>(document).get(), this);
+    } else
+        m_private = MainThreadWebSocketChannel::create(PassRefPtr<Document>(document).get(), this);
 }
 
 WebSocketImpl::~WebSocketImpl()
@@ -89,12 +95,12 @@ WebString WebSocketImpl::extensions()
 
 bool WebSocketImpl::sendText(const WebString& message)
 {
-    return m_private->send(message) == ThreadableWebSocketChannel::SendSuccess;
+    return m_private->send(message) == WebSocketChannel::SendSuccess;
 }
 
 bool WebSocketImpl::sendArrayBuffer(const WebArrayBuffer& webArrayBuffer)
 {
-    return m_private->send(*PassRefPtr<ArrayBuffer>(webArrayBuffer), 0, webArrayBuffer.byteLength()) == ThreadableWebSocketChannel::SendSuccess;
+    return m_private->send(*PassRefPtr<ArrayBuffer>(webArrayBuffer), 0, webArrayBuffer.byteLength()) == WebSocketChannel::SendSuccess;
 }
 
 unsigned long WebSocketImpl::bufferedAmount() const

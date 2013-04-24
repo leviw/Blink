@@ -27,16 +27,16 @@
  */
 
 #include "config.h"
-#include "IDBFactoryBackendImpl.h"
+#include "modules/indexeddb/IDBFactoryBackendImpl.h"
 
-#include "DOMStringList.h"
-#include "IDBBackingStore.h"
-#include "IDBDatabaseBackendImpl.h"
-#include "IDBDatabaseException.h"
-#include "IDBTracing.h"
-#include "IDBTransactionCoordinator.h"
-#include "SecurityOrigin.h"
-#include <wtf/UnusedParam.h>
+#include "core/dom/DOMStringList.h"
+#include "core/page/SecurityOrigin.h"
+#include "modules/indexeddb/IDBBackingStore.h"
+#include "modules/indexeddb/IDBDatabaseBackendImpl.h"
+#include "modules/indexeddb/IDBDatabaseException.h"
+#include "modules/indexeddb/IDBTracing.h"
+#include "modules/indexeddb/IDBTransactionCoordinator.h"
+#include "wtf/UnusedParam.h"
 
 namespace WebCore {
 
@@ -54,15 +54,15 @@ static void cleanWeakMap(HashMap<K, WeakPtr<M> >& map)
     }
 }
 
-static String computeFileIdentifier(SecurityOrigin* securityOrigin)
+static String computeFileIdentifier(const String& databaseIdentifier)
 {
     static const char levelDBFileSuffix[] = "@1";
-    return securityOrigin->databaseIdentifier() + levelDBFileSuffix;
+    return databaseIdentifier + levelDBFileSuffix;
 }
 
-static String computeUniqueIdentifier(const String& name, SecurityOrigin* securityOrigin)
+static String computeUniqueIdentifier(const String& name, const String& databaseIdentifier)
 {
-    return computeFileIdentifier(securityOrigin) + name;
+    return computeFileIdentifier(databaseIdentifier) + name;
 }
 
 IDBFactoryBackendImpl::IDBFactoryBackendImpl()
@@ -82,25 +82,19 @@ void IDBFactoryBackendImpl::removeIDBDatabaseBackend(const String& uniqueIdentif
 void IDBFactoryBackendImpl::getDatabaseNames(PassRefPtr<IDBCallbacks> callbacks, PassRefPtr<SecurityOrigin> securityOrigin, ScriptExecutionContext*, const String& dataDirectory)
 {
     IDB_TRACE("IDBFactoryBackendImpl::getDatabaseNames");
-    RefPtr<IDBBackingStore> backingStore = openBackingStore(securityOrigin, dataDirectory);
+    RefPtr<IDBBackingStore> backingStore = openBackingStore(securityOrigin->databaseIdentifier(), dataDirectory);
     if (!backingStore) {
         callbacks->onError(IDBDatabaseError::create(IDBDatabaseException::UnknownError, "Internal error opening backing store for indexedDB.webkitGetDatabaseNames."));
         return;
     }
 
-    RefPtr<DOMStringList> databaseNames = DOMStringList::create();
-
-    Vector<String> foundNames = backingStore->getDatabaseNames();
-    for (Vector<String>::const_iterator it = foundNames.begin(); it != foundNames.end(); ++it)
-        databaseNames->append(*it);
-
-    callbacks->onSuccess(databaseNames.release());
+    callbacks->onSuccess(backingStore->getDatabaseNames());
 }
 
 void IDBFactoryBackendImpl::deleteDatabase(const String& name, PassRefPtr<IDBCallbacks> callbacks, PassRefPtr<SecurityOrigin> securityOrigin, ScriptExecutionContext*, const String& dataDirectory)
 {
     IDB_TRACE("IDBFactoryBackendImpl::deleteDatabase");
-    const String uniqueIdentifier = computeUniqueIdentifier(name, securityOrigin.get());
+    const String uniqueIdentifier = computeUniqueIdentifier(name, securityOrigin->databaseIdentifier());
 
     IDBDatabaseBackendMap::iterator it = m_databaseBackendMap.find(uniqueIdentifier);
     if (it != m_databaseBackendMap.end()) {
@@ -111,7 +105,7 @@ void IDBFactoryBackendImpl::deleteDatabase(const String& name, PassRefPtr<IDBCal
     }
 
     // FIXME: Everything from now on should be done on another thread.
-    RefPtr<IDBBackingStore> backingStore = openBackingStore(securityOrigin, dataDirectory);
+    RefPtr<IDBBackingStore> backingStore = openBackingStore(securityOrigin->databaseIdentifier(), dataDirectory);
     if (!backingStore) {
         callbacks->onError(IDBDatabaseError::create(IDBDatabaseException::UnknownError, "Internal error opening backing store for indexedDB.deleteDatabase."));
         return;
@@ -126,9 +120,9 @@ void IDBFactoryBackendImpl::deleteDatabase(const String& name, PassRefPtr<IDBCal
         callbacks->onError(IDBDatabaseError::create(IDBDatabaseException::UnknownError, "Internal error creating database backend for indexedDB.deleteDatabase."));
 }
 
-PassRefPtr<IDBBackingStore> IDBFactoryBackendImpl::openBackingStore(PassRefPtr<SecurityOrigin> securityOrigin, const String& dataDirectory)
+PassRefPtr<IDBBackingStore> IDBFactoryBackendImpl::openBackingStore(const String& databaseIdentifier, const String& dataDirectory)
 {
-    const String fileIdentifier = computeFileIdentifier(securityOrigin.get());
+    const String fileIdentifier = computeFileIdentifier(databaseIdentifier);
     const bool openInMemory = dataDirectory.isEmpty();
 
     IDBBackingStoreMap::iterator it2 = m_backingStoreMap.find(fileIdentifier);
@@ -137,9 +131,9 @@ PassRefPtr<IDBBackingStore> IDBFactoryBackendImpl::openBackingStore(PassRefPtr<S
 
     RefPtr<IDBBackingStore> backingStore;
     if (openInMemory)
-        backingStore = IDBBackingStore::openInMemory(securityOrigin.get(), fileIdentifier);
+        backingStore = IDBBackingStore::openInMemory(fileIdentifier);
     else
-        backingStore = IDBBackingStore::open(securityOrigin.get(), dataDirectory, fileIdentifier);
+        backingStore = IDBBackingStore::open(databaseIdentifier, dataDirectory, fileIdentifier);
 
     if (backingStore) {
         cleanWeakMap(m_backingStoreMap);
@@ -161,12 +155,12 @@ void IDBFactoryBackendImpl::open(const String& name, int64_t version, int64_t tr
 {
     IDB_TRACE("IDBFactoryBackendImpl::open");
     RefPtr<SecurityOrigin> securityOrigin = prpSecurityOrigin;
-    const String uniqueIdentifier = computeUniqueIdentifier(name, securityOrigin.get());
+    const String uniqueIdentifier = computeUniqueIdentifier(name, securityOrigin->databaseIdentifier());
 
     RefPtr<IDBDatabaseBackendImpl> databaseBackend;
     IDBDatabaseBackendMap::iterator it = m_databaseBackendMap.find(uniqueIdentifier);
     if (it == m_databaseBackendMap.end()) {
-        RefPtr<IDBBackingStore> backingStore = openBackingStore(securityOrigin, dataDirectory);
+        RefPtr<IDBBackingStore> backingStore = openBackingStore(securityOrigin->databaseIdentifier(), dataDirectory);
         if (!backingStore) {
             callbacks->onError(IDBDatabaseError::create(IDBDatabaseException::UnknownError, "Internal error opening backing store for indexedDB.open."));
             return;

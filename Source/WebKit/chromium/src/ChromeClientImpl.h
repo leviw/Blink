@@ -126,6 +126,7 @@ public:
     virtual PlatformPageClient platformPageClient() const { return PlatformPageClient(this); }
     virtual void contentsSizeChanged(WebCore::Frame*, const WebCore::IntSize&) const;
     virtual void deviceOrPageScaleFactorChanged() const;
+    virtual void didProgrammaticallyScroll(WebCore::Frame*, const WebCore::IntPoint&) const;
     virtual void layoutUpdated(WebCore::Frame*) const;
     virtual void scrollRectIntoView(
         const WebCore::IntRect&) const { }
@@ -148,15 +149,11 @@ public:
     virtual PassRefPtr<WebCore::DateTimeChooser> openDateTimeChooser(WebCore::DateTimeChooserClient*, const WebCore::DateTimeChooserParameters&) OVERRIDE;
     virtual void runOpenPanel(WebCore::Frame*, PassRefPtr<WebCore::FileChooser>);
     virtual void loadIconForFiles(const Vector<WTF::String>&, WebCore::FileIconLoader*);
-#if ENABLE(DIRECTORY_UPLOAD)
     virtual void enumerateChosenDirectory(WebCore::FileChooser*);
-#endif
     virtual void setCursor(const WebCore::Cursor&);
     virtual void setCursorHiddenUntilMouseMoves(bool);
     virtual void formStateDidChange(const WebCore::Node*);
-#if ENABLE(TOUCH_EVENTS)
     virtual void needTouchEvents(bool needTouchEvents) OVERRIDE;
-#endif
 
     virtual WebCore::GraphicsLayerFactory* graphicsLayerFactory() const OVERRIDE;
 

@@ -30,46 +30,60 @@
 
 {
   'includes': [
-    '../WebKit/chromium/features.gypi',
-    '../WebCore/WebCore.gypi',
+    '../WebKit/chromium/WinPrecompile.gypi',
+    '../core/features.gypi',
+    '../core/core.gypi',
     '../modules/modules.gypi',
-    '../bindings/bindings.gypi',
+    'bindings.gypi',
   ],
 
   'variables': {
-    'bindings_idl_files': [
-      '<@(webcore_idl_files)',
+    'idl_files': [
+      '<@(core_idl_files)',
       '<@(modules_idl_files)',
-    ],
-
-    'bindings_idl_files!': [
-      # Custom bindings in bindings/v8/custom exist for these.
-      '../WebCore/dom/EventListener.idl',
-
-      '../WebCore/page/AbstractView.idl',
-
-      # These bindings are excluded, as they're only used through inheritance and don't define constants that would need a constructor.
-      '../WebCore/svg/ElementTimeControl.idl',
-      '../WebCore/svg/SVGExternalResourcesRequired.idl',
-      '../WebCore/svg/SVGFilterPrimitiveStandardAttributes.idl',
-      '../WebCore/svg/SVGFitToViewBox.idl',
-      '../WebCore/svg/SVGLangSpace.idl',
-      '../WebCore/svg/SVGLocatable.idl',
-      '../WebCore/svg/SVGTests.idl',
-      '../WebCore/svg/SVGTransformable.idl',
-
-      # FIXME: I don't know why these are excluded, either.
-      # Someone (me?) should figure it out and add appropriate comments.
-      '../WebCore/css/CSSUnknownRule.idl',
     ],
 
     'conditions': [
       ['enable_svg!=0', {
-        'bindings_idl_files': [
-          '<@(webcore_svg_idl_files)',
+        'idl_files': [
+          '<@(svg_idl_files)',
+        ],
+      }],
+      ['OS=="win" and buildtype=="Official"', {
+        # On windows official release builds, we try to preserve symbol space.
+        'derived_sources_aggregate_files': [
+          '<(SHARED_INTERMEDIATE_DIR)/webkit/bindings/V8DerivedSourcesAll.cpp',
+        ],
+      },{
+        'derived_sources_aggregate_files': [
+          '<(SHARED_INTERMEDIATE_DIR)/webkit/bindings/V8DerivedSources01.cpp',
+          '<(SHARED_INTERMEDIATE_DIR)/webkit/bindings/V8DerivedSources02.cpp',
+          '<(SHARED_INTERMEDIATE_DIR)/webkit/bindings/V8DerivedSources03.cpp',
+          '<(SHARED_INTERMEDIATE_DIR)/webkit/bindings/V8DerivedSources04.cpp',
+          '<(SHARED_INTERMEDIATE_DIR)/webkit/bindings/V8DerivedSources05.cpp',
+          '<(SHARED_INTERMEDIATE_DIR)/webkit/bindings/V8DerivedSources06.cpp',
+          '<(SHARED_INTERMEDIATE_DIR)/webkit/bindings/V8DerivedSources07.cpp',
+          '<(SHARED_INTERMEDIATE_DIR)/webkit/bindings/V8DerivedSources08.cpp',
+          '<(SHARED_INTERMEDIATE_DIR)/webkit/bindings/V8DerivedSources09.cpp',
+          '<(SHARED_INTERMEDIATE_DIR)/webkit/bindings/V8DerivedSources10.cpp',
+          '<(SHARED_INTERMEDIATE_DIR)/webkit/bindings/V8DerivedSources11.cpp',
+          '<(SHARED_INTERMEDIATE_DIR)/webkit/bindings/V8DerivedSources12.cpp',
+          '<(SHARED_INTERMEDIATE_DIR)/webkit/bindings/V8DerivedSources13.cpp',
+          '<(SHARED_INTERMEDIATE_DIR)/webkit/bindings/V8DerivedSources14.cpp',
+          '<(SHARED_INTERMEDIATE_DIR)/webkit/bindings/V8DerivedSources15.cpp',
+          '<(SHARED_INTERMEDIATE_DIR)/webkit/bindings/V8DerivedSources16.cpp',
+          '<(SHARED_INTERMEDIATE_DIR)/webkit/bindings/V8DerivedSources17.cpp',
+          '<(SHARED_INTERMEDIATE_DIR)/webkit/bindings/V8DerivedSources18.cpp',
+          '<(SHARED_INTERMEDIATE_DIR)/webkit/bindings/V8DerivedSources19.cpp',
         ],
       }],
     ],
+  },
+
+  'target_defaults': {
+    'variables': {
+      'optimize': 'max',
+    },
   },
 
   'targets': [{
@@ -80,7 +94,7 @@
       'variables': {
         # Write sources into a file, so that the action command line won't
         # exceed OS limits.
-        'idl_files_list': '<|(idl_files_list.tmp <@(bindings_idl_files))',
+        'idl_files_list': '<|(idl_files_list.tmp <@(idl_files))',
       },
       'inputs': [
         'scripts/preprocess-idls.pl',
@@ -95,7 +109,7 @@
          '<(perl_exe)',
          '-w',
          '-Iscripts',
-         '-I../WebCore/scripts',
+         '-I../core/scripts',
          'scripts/preprocess-idls.pl',
          '--defines',
          '<(feature_defines)',
@@ -113,15 +127,16 @@
       'hard_dependency': 1,
       'dependencies': [
         'supplemental_dependencies',
+        '../core/core.gyp/core_derived_sources.gyp:generate_settings',
       ],
       'sources': [
-        '<@(bindings_idl_files)',
+        '<@(idl_files)',
         '<@(webcore_test_support_idl_files)',
       ],
       'actions': [{
         'action_name': 'derived_sources_all_in_one',
         'inputs': [
-          '../WebCore/WebCore.gyp/scripts/action_derivedsourcesallinone.py',
+          '../core/core.gyp/scripts/action_derivedsourcesallinone.py',
           '<(SHARED_INTERMEDIATE_DIR)/supplemental_dependency.tmp',
         ],
         'outputs': [
@@ -129,7 +144,7 @@
         ],
         'action': [
           'python',
-          '../WebCore/WebCore.gyp/scripts/action_derivedsourcesallinone.py',
+          '../core/core.gyp/scripts/action_derivedsourcesallinone.py',
           '<(SHARED_INTERMEDIATE_DIR)/supplemental_dependency.tmp',
           '--',
           '<@(derived_sources_aggregate_files)',
@@ -145,8 +160,8 @@
           'scripts/CodeGeneratorV8.pm',
           'scripts/IDLParser.pm',
           'scripts/IDLAttributes.txt',
-          '../WebCore/scripts/preprocessor.pm',
-          '<!@pymod_do_main(supplemental_idl_files <@(bindings_idl_files))',
+          '../core/scripts/preprocessor.pm',
+          '<!@pymod_do_main(supplemental_idl_files <@(idl_files))',
         ],
         'outputs': [
           # FIXME:  The .cpp file should be in webkit/bindings once
@@ -164,17 +179,18 @@
             '--include', '../modules/notifications',
             '--include', '../modules/webaudio',
             '--include', '../modules/webdatabase',
-            '--include', '../WebCore/css',
-            '--include', '../WebCore/dom',
-            '--include', '../WebCore/fileapi',
-            '--include', '../WebCore/html',
-            '--include', '../WebCore/page',
-            '--include', '../WebCore/plugins',
-            '--include', '../WebCore/storage',
-            '--include', '../WebCore/svg',
-            '--include', '../WebCore/testing',
-            '--include', '../WebCore/workers',
-            '--include', '../WebCore/xml',
+            '--include', '../modules/webmidi',
+            '--include', '../core/css',
+            '--include', '../core/dom',
+            '--include', '../core/fileapi',
+            '--include', '../core/html',
+            '--include', '../core/page',
+            '--include', '../core/plugins',
+            '--include', '../core/storage',
+            '--include', '../core/svg',
+            '--include', '../core/testing',
+            '--include', '../core/workers',
+            '--include', '../core/xml',
             '--include', '<(SHARED_INTERMEDIATE_DIR)/webkit',
           ],
         },
@@ -188,7 +204,7 @@
           '<(perl_exe)',
           '-w',
           '-Iscripts',
-          '-I../WebCore/scripts',
+          '-I../core/scripts',
           'scripts/generate-bindings.pl',
           '--outputHeadersDir',
           '<(SHARED_INTERMEDIATE_DIR)/webkit/bindings',

@@ -26,25 +26,26 @@
 #ifndef DOMRequestState_h
 #define DOMRequestState_h
 
-#include "V8Binding.h"
-#include "WorldContextHandle.h"
+#include "bindings/v8/DOMWrapperWorld.h"
+#include "bindings/v8/V8Binding.h"
+#include "core/dom/ScriptExecutionContext.h"
 #include "v8.h"
+#include "wtf/RefPtr.h"
 
 namespace WebCore {
-
-class ScriptExecutionContext;
 
 class DOMRequestState {
 public:
     explicit DOMRequestState(ScriptExecutionContext* scriptExecutionContext)
-        : m_worldContextHandle(UseCurrentWorld)
-        , m_scriptExecutionContext(scriptExecutionContext)
+        : m_scriptExecutionContext(scriptExecutionContext)
+        , m_world(DOMWrapperWorld::current())
     {
     }
 
     void clear()
     {
         m_scriptExecutionContext = 0;
+        m_world.clear();
     }
 
     class Scope {
@@ -60,12 +61,12 @@ public:
 
     v8::Local<v8::Context> context()
     {
-        return toV8Context(m_scriptExecutionContext, m_worldContextHandle);
+        return toV8Context(m_scriptExecutionContext, m_world.get());
     }
 
 private:
-    WorldContextHandle m_worldContextHandle;
     ScriptExecutionContext* m_scriptExecutionContext;
+    RefPtr<DOMWrapperWorld> m_world;
 };
 
 }

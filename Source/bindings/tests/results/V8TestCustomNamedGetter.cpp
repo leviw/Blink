@@ -26,6 +26,7 @@
 #include "ExceptionCode.h"
 #include "Frame.h"
 #include "RuntimeEnabledFeatures.h"
+#include "ScriptController.h"
 #include "V8Binding.h"
 #include "V8DOMWrapper.h"
 #include <wtf/UnusedParam.h>
@@ -64,6 +65,22 @@ inline void checkTypeOrDieTrying(TestCustomNamedGetter* object)
 }
 #endif // ENABLE(BINDING_INTEGRITY)
 
+#if defined(OS_WIN)
+// In ScriptWrappable, the use of extern function prototypes inside templated static methods has an issue on windows.
+// These prototypes do not pick up the surrounding namespace, so drop out of WebCore as a workaround.
+} // namespace WebCore
+using WebCore::ScriptWrappable;
+using WebCore::V8TestCustomNamedGetter;
+using WebCore::TestCustomNamedGetter;
+#endif
+void initializeScriptWrappableForInterface(TestCustomNamedGetter* object)
+{
+    if (ScriptWrappable::wrapperCanBeStoredInObject(object))
+        ScriptWrappable::setTypeInfoInObject(object, &V8TestCustomNamedGetter::info);
+}
+#if defined(OS_WIN)
+namespace WebCore {
+#endif
 WrapperTypeInfo V8TestCustomNamedGetter::info = { V8TestCustomNamedGetter::GetTemplate, V8TestCustomNamedGetter::derefObject, 0, 0, 0, V8TestCustomNamedGetter::installPerContextPrototypeProperties, 0, WrapperTypeObjectPrototype };
 
 namespace TestCustomNamedGetterV8Internal {
@@ -88,7 +105,7 @@ static v8::Handle<v8::Value> anotherFunctionMethodCallback(const v8::Arguments& 
 } // namespace TestCustomNamedGetterV8Internal
 
 static const V8DOMConfiguration::BatchedMethod V8TestCustomNamedGetterMethods[] = {
-    {"anotherFunction", TestCustomNamedGetterV8Internal::anotherFunctionMethodCallback, 0},
+    {"anotherFunction", TestCustomNamedGetterV8Internal::anotherFunctionMethodCallback, 0, 1},
 };
 
 static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestCustomNamedGetterTemplate(v8::Persistent<v8::FunctionTemplate> desc, v8::Isolate* isolate, WrapperWorldType currentWorldType)
@@ -104,7 +121,6 @@ static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestCustomNamedGetterTemp
     v8::Local<v8::ObjectTemplate> proto = desc->PrototypeTemplate();
     UNUSED_PARAM(instance); // In some cases, it will not be used.
     UNUSED_PARAM(proto); // In some cases, it will not be used.
-    
     desc->InstanceTemplate()->SetNamedPropertyHandler(V8TestCustomNamedGetter::namedPropertyGetter, 0, 0, 0, 0);
 
     // Custom toString template

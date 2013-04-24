@@ -31,9 +31,10 @@
 {
     'includes': [
         'WinPrecompile.gypi',
-        '../../WebCore/WebCore.gypi',
+        '../../wtf/wtf.gypi',
+        '../../core/core.gypi',
         'WebKit.gypi',
-        'features.gypi',
+        '../../core/features.gypi',
     ],
     'targets': [
         {
@@ -42,8 +43,8 @@
             'variables': { 'enable_wexit_time_destructors': 1, },
             'dependencies': [
                 '../../Platform/Platform.gyp/Platform.gyp:webkit_platform',
-                '../../WebCore/WebCore.gyp/WebCore.gyp:webcore',
-                '../../bindings/bindings.gyp:bindings',
+                '../../core/core.gyp/core.gyp:webcore',
+                '../../modules/modules.gyp:modules',
                 '<(DEPTH)/skia/skia.gyp:skia',
                 '<(DEPTH)/third_party/angle/src/build_angle.gyp:translator_glsl',
                 '<(DEPTH)/third_party/icu/icu.gyp:icuuc',
@@ -103,7 +104,6 @@
                 'public/WebDOMMessageEvent.h',
                 'public/WebDOMMouseEvent.h',
                 'public/WebDOMMutationEvent.h',
-                'public/WebDOMStringList.h',
                 'public/WebDataSource.h',
                 'public/WebDatabase.h',
                 'public/WebDatabaseObserver.h',
@@ -251,6 +251,7 @@
                 'public/WebUserGestureToken.h',
                 'public/WebUserMediaClient.h',
                 'public/WebUserMediaRequest.h',
+                'public/WebValidationMessageClient.h',
                 'public/WebView.h',
                 'public/WebViewBenchmarkSupport.h',
                 'public/WebViewClient.h',
@@ -396,6 +397,8 @@
                 'src/UserMediaClientImpl.cpp',
                 'src/ValidationMessageClientImpl.cpp',
                 'src/ValidationMessageClientImpl.h',
+                'src/ViewportAnchor.cpp',
+                'src/ViewportAnchor.h',
                 'src/WebTextCheckingCompletionImpl.h',
                 'src/WebTextCheckingCompletionImpl.cpp',
                 'src/WebTextCheckingResult.cpp',
@@ -422,7 +425,6 @@
                 'src/WebDOMMessageEvent.cpp',
                 'src/WebDOMMouseEvent.cpp',
                 'src/WebDOMMutationEvent.cpp',
-                'src/WebDOMStringList.cpp',
                 'src/WebDatabase.cpp',
                 'src/WebDataSourceImpl.cpp',
                 'src/WebDataSourceImpl.h',
@@ -580,11 +582,12 @@
                         'WEBKIT_IMPLEMENTATION=1',
                     ],
                     'dependencies': [
-                        '../../bindings/bindings.gyp:bindings',
-                        '../../WebCore/WebCore.gyp/WebCore.gyp:webcore_test_support',
+                        '../../core/core.gyp/core.gyp:webcore_derived',
+                        '../../core/core.gyp/core.gyp:webcore_test_support',
                         '<(DEPTH)/base/base.gyp:test_support_base',
-                        '<(DEPTH)/testing/gmock.gyp:gmock',
+                        '<(DEPTH)/build/temp_gyp/googleurl.gyp:googleurl',
                         '<(DEPTH)/testing/gtest.gyp:gtest',
+                        '<(DEPTH)/testing/gmock.gyp:gmock',
                         '<(DEPTH)/third_party/icu/icu.gyp:*',
                         '<(DEPTH)/third_party/libjpeg_turbo/libjpeg.gyp:libjpeg',
                         '<(DEPTH)/third_party/libpng/libpng.gyp:libpng',
@@ -593,7 +596,6 @@
                         '<(DEPTH)/third_party/modp_b64/modp_b64.gyp:modp_b64',
                         '<(DEPTH)/third_party/ots/ots.gyp:ots',
                         '<(DEPTH)/third_party/zlib/zlib.gyp:zlib',
-                        '<(DEPTH)/url/url.gyp:url',
                         '<(DEPTH)/v8/tools/gyp/v8.gyp:v8',
                         # We must not add webkit_support here because of cyclic dependency.
                     ],
@@ -603,15 +605,17 @@
                         ],
                     },
                     'export_dependent_settings': [
-                        '<(DEPTH)/url/url.gyp:url',
+                        '<(DEPTH)/build/temp_gyp/googleurl.gyp:googleurl',
                         '<(DEPTH)/v8/tools/gyp/v8.gyp:v8',
                     ],
                     'include_dirs': [
                         # WARNING: Do not view this particular case as a precedent for
                         # including WebCore headers in DumpRenderTree project.
-                        '../../WebCore/testing/v8', # for WebCoreTestSupport.h, needed to link in window.internals code.
+                        '../../core/testing/v8', # for WebCoreTestSupport.h, needed to link in window.internals code.
                     ],
                     'sources': [
+                        '<@(wtf_unittest_files)',
+                        '<@(core_unittest_files)',
                         '<@(webkit_unittest_files)',
                         'src/WebTestingSupport.cpp',
                         'public/WebTestingSupport.h',
@@ -652,20 +656,29 @@
                       },
                     },
                 }],
-                ['use_x11 == 1', {
+                ['OS == "linux"', {
                     'dependencies': [
                         '<(DEPTH)/build/linux/system.gyp:fontconfig',
+                    ],
+                    'include_dirs': [
+                        'public/linux',
+                    ],
+                }, {
+                    'sources/': [
+                        ['exclude', '/linux/'],
+                    ],
+                }],
+                ['use_x11 == 1', {
+                    'dependencies': [
                         '<(DEPTH)/build/linux/system.gyp:x11',
                     ],
                     'include_dirs': [
                         'public/x11',
-                        'public/linux',
                     ],
-                }, { # else: use_x11 != 1
+                }, {
                     'sources/': [
                         ['exclude', '/x11/'],
-                        ['exclude', '/linux/'],
-                    ],
+                    ]
                 }],
                 ['toolkit_uses_gtk == 1', {
                     'dependencies': [
@@ -750,7 +763,7 @@
             'target_name': 'webkit_wtf_support',
             'type': 'static_library',
             'dependencies': [
-                '../../WTF/WTF.gyp/WTF.gyp:wtf',
+                '../../wtf/wtf.gyp:wtf',
             ],
             'defines': [
                 'WEBKIT_IMPLEMENTATION=1',
@@ -779,12 +792,12 @@
                 }, {
                     'type': 'static_library',
                     'dependencies': [
-                        '../../WTF/WTF.gyp/WTF.gyp:wtf',
-                        '../../WebCore/WebCore.gyp/WebCore.gyp:webcore_test_support',
+                        '../../wtf/wtf.gyp:wtf',
+                        '../../core/core.gyp/core.gyp:webcore_test_support',
                     ],
                     'include_dirs': [
                         'public',
-                        '../../WebCore/testing/v8', # for WebCoreTestSupport.h, needed to link in window.internals code.
+                        '../../core/testing/v8', # for WebCoreTestSupport.h, needed to link in window.internals code.
                         '../../Platform/chromium/',
                     ],
                     'sources': [
@@ -794,22 +807,6 @@
                 }],
             ],
         },
-        {
-            # FIXME: Remove this once migrated to the new devtools rules downstream.
-            'target_name': 'inspector_resources',
-            'type': 'none',
-            'dependencies': [
-                '../../devtools/devtools.gyp:devtools_frontend_resources',
-            ],
-        },
-        {
-            # FIXME: Remove this once migrated to the new devtools rules downstream.
-            'target_name': 'generate_devtools_grd',
-            'type': 'none',
-            'dependencies': [
-                '../../devtools/devtools.gyp:generate_devtools_grd',
-            ],
-        }
     ], # targets
     'conditions': [
         ['os_posix==1 and OS!="mac" and OS!="ios" and gcc_version>=46', {

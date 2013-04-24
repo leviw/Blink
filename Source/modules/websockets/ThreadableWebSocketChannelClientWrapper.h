@@ -31,16 +31,16 @@
 #ifndef ThreadableWebSocketChannelClientWrapper_h
 #define ThreadableWebSocketChannelClientWrapper_h
 
-#include "ScriptExecutionContext.h"
-#include "ThreadableWebSocketChannel.h"
-#include "WebSocketChannelClient.h"
-#include "WorkerThreadableWebSocketChannel.h"
-#include <wtf/Forward.h>
-#include <wtf/OwnPtr.h>
-#include <wtf/PassOwnPtr.h>
-#include <wtf/Threading.h>
-#include <wtf/Vector.h>
-#include <wtf/text/WTFString.h>
+#include "core/dom/ScriptExecutionContext.h"
+#include "modules/websockets/WebSocketChannel.h"
+#include "modules/websockets/WebSocketChannelClient.h"
+#include "modules/websockets/WorkerThreadableWebSocketChannel.h"
+#include "wtf/Forward.h"
+#include "wtf/OwnPtr.h"
+#include "wtf/PassOwnPtr.h"
+#include "wtf/Threading.h"
+#include "wtf/Vector.h"
+#include "wtf/text/WTFString.h"
 
 namespace WebCore {
 
@@ -68,8 +68,8 @@ public:
     String extensions() const;
     void setExtensions(const String&);
 
-    ThreadableWebSocketChannel::SendResult sendRequestResult() const;
-    void setSendRequestResult(ThreadableWebSocketChannel::SendResult);
+    WebSocketChannel::SendResult sendRequestResult() const;
+    void setSendRequestResult(WebSocketChannel::SendResult);
 
     unsigned long bufferedAmount() const;
     void setBufferedAmount(unsigned long);
@@ -109,7 +109,7 @@ private:
     // ThreadSafeRefCounted must not have String member variables.
     Vector<UChar> m_subprotocol;
     Vector<UChar> m_extensions;
-    ThreadableWebSocketChannel::SendResult m_sendRequestResult;
+    WebSocketChannel::SendResult m_sendRequestResult;
     unsigned long m_bufferedAmount;
     bool m_suspended;
     Vector<OwnPtr<ScriptExecutionContext::Task> > m_pendingTasks;

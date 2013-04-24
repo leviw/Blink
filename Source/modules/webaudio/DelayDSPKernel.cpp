@@ -26,9 +26,9 @@
 
 #if ENABLE(WEB_AUDIO)
 
-#include "DelayDSPKernel.h"
+#include "modules/webaudio/DelayDSPKernel.h"
 
-#include "AudioUtilities.h"
+#include "core/platform/audio/AudioUtilities.h"
 #include <algorithm>
 
 using namespace std;
@@ -164,6 +164,8 @@ void DelayDSPKernel::reset()
 
 double DelayDSPKernel::tailTime() const
 {
+    // Account for worst case delay.
+    // Don't try to track actual delay time which can change dynamically.
     return m_maxDelayTime;
 }
 

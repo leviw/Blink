@@ -25,15 +25,15 @@
  */
 
 #include "config.h"
-#include "DOMWindowNotifications.h"
+#include "modules/notifications/DOMWindowNotifications.h"
 
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
 
-#include "DOMWindow.h"
-#include "Document.h"
-#include "NotificationCenter.h"
-#include "NotificationController.h"
-#include "Page.h"
+#include "core/dom/Document.h"
+#include "core/page/DOMWindow.h"
+#include "core/page/Page.h"
+#include "modules/notifications/NotificationCenter.h"
+#include "modules/notifications/NotificationController.h"
 
 namespace WebCore {
 
@@ -65,24 +65,6 @@ DOMWindowNotifications* DOMWindowNotifications::from(DOMWindow* window)
 NotificationCenter* DOMWindowNotifications::webkitNotifications(DOMWindow* window)
 {
     return DOMWindowNotifications::from(window)->webkitNotifications();
-}
-
-void DOMWindowNotifications::disconnectFrameForPageCache()
-{
-    m_suspendedNotificationCenter = m_notificationCenter.release();
-    DOMWindowProperty::disconnectFrameForPageCache();
-}
-
-void DOMWindowNotifications::reconnectFrameFromPageCache(Frame* frame)
-{
-    DOMWindowProperty::reconnectFrameFromPageCache(frame);
-    m_notificationCenter = m_suspendedNotificationCenter.release();
-}
-
-void DOMWindowNotifications::willDestroyGlobalObjectInCachedFrame()
-{
-    m_suspendedNotificationCenter = nullptr;
-    DOMWindowProperty::willDestroyGlobalObjectInCachedFrame();
 }
 
 void DOMWindowNotifications::willDestroyGlobalObjectInFrame()

@@ -26,9 +26,7 @@
 #ifndef SpeechRecognitionClient_h
 #define SpeechRecognitionClient_h
 
-#if ENABLE(SCRIPTED_SPEECH)
-
-#include <wtf/text/WTFString.h>
+#include "wtf/text/WTFString.h"
 
 namespace WebCore {
 
@@ -48,7 +46,5 @@ public:
 void provideSpeechRecognitionTo(Page*, SpeechRecognitionClient*);
 
 } // namespace WebCore
-
-#endif // ENABLE(SCRIPTED_SPEECH)
 
 #endif // SpeechRecognitionClient_h

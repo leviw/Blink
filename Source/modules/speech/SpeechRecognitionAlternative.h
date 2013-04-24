@@ -26,10 +26,8 @@
 #ifndef SpeechRecognitionAlternative_h
 #define SpeechRecognitionAlternative_h
 
-#if ENABLE(SCRIPTED_SPEECH)
-
-#include <wtf/RefCounted.h>
-#include <wtf/text/WTFString.h>
+#include "wtf/RefCounted.h"
+#include "wtf/text/WTFString.h"
 
 namespace WebCore {
 
@@ -50,7 +48,5 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // ENABLE(SCRIPTED_SPEECH)
 
 #endif // SpeechRecognitionAlternative_h

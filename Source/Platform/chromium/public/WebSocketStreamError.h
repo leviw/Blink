@@ -32,12 +32,36 @@
 #define WebSocketStreamError_h
 
 #include "WebCommon.h"
+#include "WebPrivatePtr.h"
+
+#if WEBKIT_IMPLEMENTATION
+#include <wtf/PassRefPtr.h>
+#endif
+
+namespace WebCore { class SocketStreamError; }
 
 namespace WebKit {
 
+class WebString;
+
 class WebSocketStreamError {
 public:
-    // FIXME: Define SocketStream Error codes and accessor methods.
+    WebSocketStreamError(int code, const WebString& message) { assign(code, message); }
+    WebSocketStreamError(const WebSocketStreamError& other) { assign(other); }
+    ~WebSocketStreamError() { reset(); }
+
+    WEBKIT_EXPORT void assign(int code, const WebString& message);
+    WEBKIT_EXPORT void assign(const WebSocketStreamError&);
+    WEBKIT_EXPORT void reset();
+
+#if WEBKIT_IMPLEMENTATION
+    WebSocketStreamError(WTF::PassRefPtr<WebCore::SocketStreamError>);
+    WebSocketStreamError& operator=(WTF::PassRefPtr<WebCore::SocketStreamError>);
+    operator WTF::PassRefPtr<WebCore::SocketStreamError>() const;
+#endif
+
+private:
+    WebPrivatePtr<WebCore::SocketStreamError> m_private;
 };
 
 } // namespace WebKit

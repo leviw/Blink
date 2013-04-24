@@ -31,18 +31,19 @@
 #ifndef DOMWrapperWorld_h
 #define DOMWrapperWorld_h
 
-#include "SecurityOrigin.h"
-#include "V8DOMActivityLogger.h"
-#include "V8PerContextData.h"
+#include "bindings/v8/V8DOMActivityLogger.h"
+#include "bindings/v8/V8PerContextData.h"
+#include "core/page/SecurityOrigin.h"
 #include <v8.h>
-#include <wtf/PassRefPtr.h>
-#include <wtf/RefCounted.h>
-#include <wtf/RefPtr.h>
-#include <wtf/text/WTFString.h>
+#include "wtf/PassRefPtr.h"
+#include "wtf/RefCounted.h"
+#include "wtf/RefPtr.h"
+#include "wtf/text/WTFString.h"
 
 namespace WebCore {
 
 class DOMDataStore;
+class ScriptExecutionContext;
 
 // This class represent a collection of DOM wrappers for a specific world.
 class DOMWrapperWorld : public RefCounted<DOMWrapperWorld> {
@@ -56,7 +57,6 @@ public:
     static bool isIsolatedWorldId(int worldId) { return worldId > mainWorldId; }
     static void getAllWorlds(Vector<RefPtr<DOMWrapperWorld> >& worlds);
 
-    void makeContextWeak(v8::Handle<v8::Context>);
     void setIsolatedWorldField(v8::Handle<v8::Context>);
 
     static DOMWrapperWorld* isolatedWorld(v8::Handle<v8::Context> context)
@@ -64,6 +64,9 @@ public:
         ASSERT(contextHasCorrectPrototype(context));
         return static_cast<DOMWrapperWorld*>(context->GetAlignedPointerFromEmbedderData(v8ContextIsolatedWorld));
     }
+
+    // Will return null if there is no DOMWrapperWorld for the current v8::Context
+    static DOMWrapperWorld* current();
 
     // Associates an isolated world (see above for description) with a security
     // origin. XMLHttpRequest instances used in that world will be considered

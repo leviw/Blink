@@ -24,11 +24,10 @@
  */
 
 [
-    Conditional=GAMEPAD,
     IndexedGetter,
     ImplementationLacksVTable
 ] interface GamepadList {
     readonly attribute unsigned long length;
-    Gamepad item([Optional=DefaultIsUndefined] unsigned long index);
+    Gamepad item([Default=Undefined] optional unsigned long index);
 };
 

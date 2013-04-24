@@ -26,15 +26,15 @@
 #ifndef Dictionary_h
 #define Dictionary_h
 
-#include "EventListener.h"
-#include "MessagePort.h"
-#include "ScriptValue.h"
+#include "bindings/v8/ScriptValue.h"
+#include "core/dom/EventListener.h"
+#include "core/dom/MessagePort.h"
 #include <v8.h>
-#include <wtf/HashMap.h>
-#include <wtf/HashSet.h>
-#include <wtf/Vector.h>
-#include <wtf/text/AtomicString.h>
-#include <wtf/text/WTFString.h>
+#include "wtf/HashMap.h"
+#include "wtf/HashSet.h"
+#include "wtf/Vector.h"
+#include "wtf/text/AtomicString.h"
+#include "wtf/text/WTFString.h"
 
 namespace WebCore {
 
@@ -80,14 +80,10 @@ public:
 #if ENABLE(ENCRYPTED_MEDIA)
     bool get(const String&, RefPtr<MediaKeyError>&) const;
 #endif
-#if ENABLE(VIDEO_TRACK)
     bool get(const String&, RefPtr<TrackBase>&) const;
-#endif
-#if ENABLE(SCRIPTED_SPEECH)
     bool get(const String&, RefPtr<SpeechRecognitionError>&) const;
     bool get(const String&, RefPtr<SpeechRecognitionResult>&) const;
     bool get(const String&, RefPtr<SpeechRecognitionResultList>&) const;
-#endif
 #if ENABLE(MEDIA_STREAM)
     bool get(const String&, RefPtr<MediaStream>&) const;
 #endif
@@ -96,11 +92,9 @@ public:
     bool get(const String&, Dictionary&) const;
     bool get(const String&, Vector<String>&) const;
     bool get(const String&, ArrayValue&) const;
-#if ENABLE(FONT_LOAD_EVENTS)
     bool get(const String&, RefPtr<CSSFontFaceRule>&) const;
     bool get(const String&, RefPtr<DOMError>&) const;
     bool get(const String&, RefPtr<VoidCallback>&) const;
-#endif
 
     bool getOwnPropertiesAsStringHashMap(HashMap<String, String>&) const;
     bool getOwnPropertyNames(Vector<String>&) const;

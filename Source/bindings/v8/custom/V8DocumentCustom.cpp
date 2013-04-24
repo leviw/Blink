@@ -31,21 +31,18 @@
 #include "config.h"
 #include "V8Document.h"
 
-#include "CanvasRenderingContext.h"
-#include "Document.h"
-#include "ExceptionCode.h"
-#include "Frame.h"
-#include "Node.h"
-#include "TouchList.h"
-#include "XPathNSResolver.h"
-#include "XPathResult.h"
+#include "bindings/v8/ScriptController.h"
+#include "core/dom/Document.h"
+#include "core/dom/ExceptionCode.h"
+#include "core/dom/Node.h"
+#include "core/dom/TouchList.h"
+#include "core/html/canvas/CanvasRenderingContext.h"
+#include "core/page/Frame.h"
+#include "core/xml/XPathNSResolver.h"
+#include "core/xml/XPathResult.h"
 
-#include "V8Binding.h"
 #include "V8CanvasRenderingContext2D.h"
-#include "V8CustomXPathNSResolver.h"
 #include "V8DOMImplementation.h"
-#include "V8DOMWindowShell.h"
-#include "V8DOMWrapper.h"
 #include "V8HTMLDocument.h"
 #include "V8Node.h"
 #include "V8Touch.h"
@@ -53,12 +50,16 @@
 #include "V8WebGLRenderingContext.h"
 #include "V8XPathNSResolver.h"
 #include "V8XPathResult.h"
+#include "bindings/v8/V8Binding.h"
+#include "bindings/v8/V8DOMWindowShell.h"
+#include "bindings/v8/V8DOMWrapper.h"
+#include "bindings/v8/custom/V8CustomXPathNSResolver.h"
 
 #if ENABLE(SVG)
 #include "V8SVGDocument.h"
 #endif
 
-#include <wtf/RefPtr.h>
+#include "wtf/RefPtr.h"
 
 namespace WebCore {
 
@@ -106,7 +107,6 @@ v8::Handle<v8::Object> wrap(Document* impl, v8::Handle<v8::Object> creationConte
     return wrapper;
 }
 
-#if ENABLE(TOUCH_EVENTS)
 v8::Handle<v8::Value> V8Document::createTouchListMethodCustom(const v8::Arguments& args)
 {
     RefPtr<TouchList> touchList = TouchList::create();
@@ -118,6 +118,5 @@ v8::Handle<v8::Value> V8Document::createTouchListMethodCustom(const v8::Argument
 
     return toV8(touchList.release(), args.Holder(), args.GetIsolate());
 }
-#endif
 
 } // namespace WebCore

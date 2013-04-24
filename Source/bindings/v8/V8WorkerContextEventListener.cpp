@@ -30,22 +30,22 @@
 
 #include "config.h"
 
-#include "V8WorkerContextEventListener.h"
+#include "bindings/v8/V8WorkerContextEventListener.h"
 
-#include "InspectorInstrumentation.h"
-#include "V8Binding.h"
-#include "V8DOMWrapper.h"
 #include "V8Event.h"
 #include "V8EventTarget.h"
-#include "V8GCController.h"
-#include "V8RecursionScope.h"
-#include "WorkerContext.h"
-#include "WorkerScriptController.h"
+#include "bindings/v8/V8Binding.h"
+#include "bindings/v8/V8DOMWrapper.h"
+#include "bindings/v8/V8GCController.h"
+#include "bindings/v8/V8RecursionScope.h"
+#include "bindings/v8/WorkerScriptController.h"
+#include "core/inspector/InspectorInstrumentation.h"
+#include "core/workers/WorkerContext.h"
 
 namespace WebCore {
 
-V8WorkerContextEventListener::V8WorkerContextEventListener(v8::Local<v8::Object> listener, bool isInline, const WorldContextHandle& worldContext)
-    : V8EventListener(listener, isInline, worldContext)
+V8WorkerContextEventListener::V8WorkerContextEventListener(v8::Local<v8::Object> listener, bool isInline)
+    : V8EventListener(listener, isInline)
 {
 }
 
@@ -73,9 +73,10 @@ void V8WorkerContextEventListener::handleEvent(ScriptExecutionContext* context, 
     v8::Context::Scope scope(v8Context);
 
     // Get the V8 wrapper for the event object.
-    v8::Handle<v8::Value> jsEvent = toV8(event, v8::Handle<v8::Object>(), v8Context->GetIsolate());
+    v8::Isolate* isolate = v8Context->GetIsolate();
+    v8::Handle<v8::Value> jsEvent = toV8(event, v8::Handle<v8::Object>(), isolate);
 
-    invokeEventHandler(context, event, jsEvent);
+    invokeEventHandler(context, event, v8::Local<v8::Value>::New(isolate, jsEvent));
 }
 
 v8::Local<v8::Value> V8WorkerContextEventListener::callListenerFunction(ScriptExecutionContext* context, v8::Handle<v8::Value> jsEvent, Event* event)
@@ -116,7 +117,7 @@ v8::Local<v8::Object> V8WorkerContextEventListener::getReceiverObject(ScriptExec
         return listener;
 
     EventTarget* target = event->currentTarget();
-    v8::Handle<v8::Value> value = toV8(target, v8::Handle<v8::Object>(), toV8Context(context, worldContext())->GetIsolate());
+    v8::Handle<v8::Value> value = toV8(target, v8::Handle<v8::Object>(), toV8Context(context, world())->GetIsolate());
     if (value.IsEmpty())
         return v8::Local<v8::Object>();
     return v8::Local<v8::Object>::New(v8::Handle<v8::Object>::Cast(value));

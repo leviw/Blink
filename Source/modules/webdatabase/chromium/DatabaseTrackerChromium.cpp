@@ -29,29 +29,29 @@
  */
 
 #include "config.h"
-#include "DatabaseTracker.h"
+#include "modules/webdatabase/DatabaseTracker.h"
 
-#include "DatabaseBackendBase.h"
-#include "DatabaseBackendContext.h"
-#include "DatabaseObserver.h"
-#include "QuotaTracker.h"
-#include "ScriptExecutionContext.h"
-#include "SecurityOrigin.h"
-#include "SecurityOriginHash.h"
-#include "SQLiteFileSystem.h"
-#include <wtf/Assertions.h>
-#include <wtf/StdLibExtras.h>
-#include <wtf/text/WTFString.h>
+#include "core/dom/ScriptExecutionContext.h"
+#include "core/page/SecurityOrigin.h"
+#include "core/page/SecurityOriginHash.h"
+#include "core/platform/sql/SQLiteFileSystem.h"
+#include "modules/webdatabase/DatabaseBackendBase.h"
+#include "modules/webdatabase/DatabaseBackendContext.h"
+#include "modules/webdatabase/chromium/DatabaseObserver.h"
+#include "modules/webdatabase/chromium/QuotaTracker.h"
+#include "wtf/Assertions.h"
+#include "wtf/StdLibExtras.h"
+#include "wtf/text/WTFString.h"
 
 namespace WebCore {
 
 DatabaseTracker& DatabaseTracker::tracker()
 {
-    AtomicallyInitializedStatic(DatabaseTracker&, tracker = *new DatabaseTracker(""));
+    AtomicallyInitializedStatic(DatabaseTracker&, tracker = *new DatabaseTracker());
     return tracker;
 }
 
-DatabaseTracker::DatabaseTracker(const String&)
+DatabaseTracker::DatabaseTracker()
 {
     SQLiteFileSystem::registerSQLiteVFS();
 }
@@ -63,17 +63,6 @@ bool DatabaseTracker::canEstablishDatabase(DatabaseBackendContext* databaseConte
     if (!success)
         error = DatabaseError::GenericSecurityError;
     return success;
-}
-
-bool DatabaseTracker::retryCanEstablishDatabase(DatabaseBackendContext*, const String&, const String&, unsigned long, DatabaseError&)
-{
-    ASSERT_NOT_REACHED();
-    return false;
-}
-
-void DatabaseTracker::setDatabaseDetails(SecurityOrigin*, const String&, const String&, unsigned long)
-{
-    // Chromium sets the database details when the database is opened
 }
 
 String DatabaseTracker::fullPathForDatabase(SecurityOrigin* origin, const String& name, bool)

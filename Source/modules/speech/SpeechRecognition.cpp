@@ -25,16 +25,14 @@
 
 #include "config.h"
 
-#if ENABLE(SCRIPTED_SPEECH)
+#include "modules/speech/SpeechRecognition.h"
 
-#include "SpeechRecognition.h"
-
-#include "Document.h"
-#include "ExceptionCode.h"
-#include "Page.h"
-#include "SpeechRecognitionController.h"
-#include "SpeechRecognitionError.h"
-#include "SpeechRecognitionEvent.h"
+#include "core/dom/Document.h"
+#include "core/dom/ExceptionCode.h"
+#include "core/page/Page.h"
+#include "modules/speech/SpeechRecognitionController.h"
+#include "modules/speech/SpeechRecognitionError.h"
+#include "modules/speech/SpeechRecognitionEvent.h"
 
 namespace WebCore {
 
@@ -190,5 +188,3 @@ SpeechRecognition::~SpeechRecognition()
 }
 
 } // namespace WebCore
-
-#endif // ENABLE(SCRIPTED_SPEECH)

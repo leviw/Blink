@@ -25,9 +25,7 @@
 
 #include "config.h"
 
-#if ENABLE(SCRIPTED_SPEECH)
-
-#include "SpeechRecognitionError.h"
+#include "modules/speech/SpeechRecognitionError.h"
 
 namespace WebCore {
 
@@ -99,5 +97,3 @@ SpeechRecognitionErrorInit::SpeechRecognitionErrorInit()
 }
 
 } // namespace WebCore
-
-#endif // ENABLE(SCRIPTED_SPEECH)

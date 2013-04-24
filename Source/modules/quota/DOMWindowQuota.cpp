@@ -29,13 +29,14 @@
  */
 
 #include "config.h"
-#include "DOMWindowQuota.h"
+#include "modules/quota/DOMWindowQuota.h"
 
-#include "DOMWindow.h"
-#include "Document.h"
-#include "Frame.h"
-#include "StorageInfo.h"
-#include <wtf/PassRefPtr.h>
+#include "core/dom/Document.h"
+#include "core/page/DOMWindow.h"
+#include "core/page/Frame.h"
+#include "core/page/PageConsole.h"
+#include "modules/quota/StorageInfo.h"
+#include "wtf/PassRefPtr.h"
 
 namespace WebCore {
 
@@ -73,7 +74,7 @@ StorageInfo* DOMWindowQuota::webkitStorageInfo(DOMWindow* window)
 StorageInfo* DOMWindowQuota::webkitStorageInfo() const
 {
     if (!m_storageInfo && frame()) {
-        frame()->document()->addConsoleMessage(JSMessageSource, WarningMessageLevel, "window.webkitStorageInfo is deprecated. Use navigator.webkitTemporaryStorage or navigator.webkitPersistentStorage instead.");
+        PageConsole::reportDeprecation(frame()->document(), PageConsole::PrefixedStorageInfo);
         m_storageInfo = StorageInfo::create();
     }
     return m_storageInfo.get();

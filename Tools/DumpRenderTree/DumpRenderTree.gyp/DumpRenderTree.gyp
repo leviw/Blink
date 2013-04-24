@@ -43,7 +43,7 @@
     },
     'includes': [
         '../DumpRenderTree.gypi',
-        '../../../Source/WebKit/chromium/features.gypi',
+        '../../../Source/core/features.gypi',
     ],
     'targets': [
         {
@@ -105,8 +105,8 @@
                     ],
                     'dependencies': [
                         '<(DEPTH)/base/base.gyp:base',
+                        '<(DEPTH)/build/temp_gyp/googleurl.gyp:googleurl',
                         '<(DEPTH)/skia/skia.gyp:skia',
-                        '<(DEPTH)/url/url.gyp:url',
                         '<(DEPTH)/v8/tools/gyp/v8.gyp:v8',
                     ],
                     'direct_dependent_settings': {
@@ -115,7 +115,7 @@
                         ],
                     },
                     'export_dependent_settings': [
-                        '<(DEPTH)/url/url.gyp:url',
+                        '<(DEPTH)/build/temp_gyp/googleurl.gyp:googleurl',
                         '<(DEPTH)/v8/tools/gyp/v8.gyp:v8',
                     ],
                     'msvs_settings': {
@@ -186,6 +186,12 @@
                         ],
                     },
                 }],
+                # The test plugin relies on X11.
+                ['OS=="linux" and use_x11==0', {
+                    'dependencies!': [
+                        'copy_TestNetscapePlugIn',
+                    ],
+                }],
                 ['use_x11 == 1', {
                     'dependencies': [
                         '<(DEPTH)/tools/xdisplaycheck/xdisplaycheck.gyp:xdisplaycheck',
@@ -226,14 +232,14 @@
             'dependencies': [
                 'TestRunner',
                 'DumpRenderTree_resources',
-                '<(source_dir)/WebKit/chromium/WebKit.gyp:inspector_resources',
+                '<(source_dir)/devtools/devtools.gyp:devtools_frontend_resources',
                 '<(source_dir)/WebKit/chromium/WebKit.gyp:webkit',
                 '<(source_dir)/WebKit/chromium/WebKit.gyp:webkit_wtf_support',
-                '<(source_dir)/WTF/WTF.gyp/WTF.gyp:wtf',
+                '<(source_dir)/wtf/wtf.gyp:wtf',
                 '<(DEPTH)/base/base.gyp:test_support_base',
+                '<(DEPTH)/build/temp_gyp/googleurl.gyp:googleurl',
                 '<(DEPTH)/third_party/icu/icu.gyp:icuuc',
                 '<(DEPTH)/third_party/mesa/mesa.gyp:osmesa',
-                '<(DEPTH)/url/url.gyp:url',
                 '<(DEPTH)/v8/tools/gyp/v8.gyp:v8',
                 '<(DEPTH)/webkit/support/webkit_support.gyp:webkit_support',
             ],

@@ -31,29 +31,15 @@
 #include "config.h"
 #include "V8HTMLCollection.h"
 
-#include "HTMLCollection.h"
-#include "V8Binding.h"
 #include "V8HTMLAllCollection.h"
 #include "V8HTMLFormControlsCollection.h"
 #include "V8HTMLOptionsCollection.h"
-#include "V8NamedNodesCollection.h"
 #include "V8Node.h"
+#include "bindings/v8/V8Binding.h"
+#include "bindings/v8/custom/V8NamedNodesCollection.h"
+#include "core/html/HTMLCollection.h"
 
 namespace WebCore {
-
-v8::Handle<v8::Value> V8HTMLCollection::namedPropertyGetter(v8::Local<v8::String> name, const v8::AccessorInfo& info)
-{
-    if (!info.Holder()->GetRealNamedPropertyInPrototypeChain(name).IsEmpty())
-        return v8Undefined();
-    if (info.Holder()->HasRealNamedCallbackProperty(name))
-        return v8Undefined();
-
-    HTMLCollection* imp = V8HTMLCollection::toNative(info.Holder());
-    Node* item = imp->namedItem(toWebCoreAtomicString(name));
-    if (!item)
-        return v8Undefined();
-    return toV8Fast(item, info, imp);
-}
 
 v8::Handle<v8::Object> wrap(HTMLCollection* impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
 {

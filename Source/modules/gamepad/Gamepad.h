@@ -26,11 +26,10 @@
 #ifndef Gamepad_h
 #define Gamepad_h
 
-#if ENABLE(GAMEPAD)
 
-#include <wtf/RefCounted.h>
-#include <wtf/Vector.h>
-#include <wtf/text/WTFString.h>
+#include "wtf/RefCounted.h"
+#include "wtf/Vector.h"
+#include "wtf/text/WTFString.h"
 
 namespace WebCore {
 
@@ -69,7 +68,5 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // ENABLE(GAMEPAD)
 
 #endif // Gamepad_h

@@ -27,9 +27,9 @@
  */
 
 #include "config.h"
-#include "V8DOMConfiguration.h"
+#include "bindings/v8/V8DOMConfiguration.h"
 
-#include "V8Binding.h"
+#include "bindings/v8/V8Binding.h"
 
 namespace WebCore {
 
@@ -54,7 +54,7 @@ void V8DOMConfiguration::batchConfigureCallbacks(v8::Handle<v8::ObjectTemplate> 
         v8::InvocationCallback callback = callbacks[i].callback;
         if (currentWorldType == MainWorld && callbacks[i].callbackForMainWorld)
             callback = callbacks[i].callbackForMainWorld;
-        prototype->Set(v8::String::NewSymbol(callbacks[i].name), v8::FunctionTemplate::New(callback, v8Undefined(), signature), attributes);
+        prototype->Set(v8::String::NewSymbol(callbacks[i].name), v8::FunctionTemplate::New(callback, v8Undefined(), signature, callbacks[i].length), attributes);
     }
 }
 

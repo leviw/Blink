@@ -38,6 +38,7 @@
 #include "ImageDecodingStore.h"
 #include "LayoutTestSupport.h"
 #include "Logging.h"
+#include "MediaPlayerPrivateChromium.h"
 #include "MutationObserver.h"
 #include "Page.h"
 #include "RuntimeEnabledFeatures.h"
@@ -45,7 +46,10 @@
 #include "TextEncoding.h"
 #include "V8Binding.h"
 #include "V8RecursionScope.h"
+#include "WebMediaPlayerClientImpl.h"
 #include "WebSocket.h"
+#include "WebWorkerClientImpl.h"
+#include "WorkerContextProxyChromium.h"
 #include "v8.h"
 #include <public/Platform.h>
 #include <public/WebPrerenderingSupport.h>
@@ -55,18 +59,6 @@
 #include <wtf/Threading.h>
 #include <wtf/UnusedParam.h>
 #include <wtf/text/AtomicString.h>
-
-#if ENABLE(VIDEO)
-#include "MediaPlayerPrivateChromium.h"
-#include "WebMediaPlayerClientImpl.h"
-#endif
-
-#include "WebWorkerClientImpl.h"
-#include "WorkerContextProxyChromium.h"
-
-#if OS(DARWIN)
-#include "WebSystemInterface.h"
-#endif
 
 namespace WebKit {
 
@@ -134,10 +126,6 @@ void initializeWithoutV8(Platform* webKitPlatformSupport)
     ASSERT(!s_webKitInitialized);
     s_webKitInitialized = true;
 
-#if OS(DARWIN)
-    InitWebCoreSystemInterface();
-#endif
-
     ASSERT(webKitPlatformSupport);
     ASSERT(!s_webKitPlatformSupport);
     s_webKitPlatformSupport = webKitPlatformSupport;
@@ -161,9 +149,7 @@ void initializeWithoutV8(Platform* webKitPlatformSupport)
 
     WebCore::setIDBFactoryBackendInterfaceCreateFunction(WebKit::IDBFactoryBackendProxy::create);
 
-#if ENABLE(VIDEO)
     WebCore::MediaPlayerPrivate::setMediaEngineRegisterSelfFunction(WebKit::WebMediaPlayerClientImpl::registerSelf);
-#endif
 
     WebCore::setWorkerContextProxyCreateFunction(WebWorkerClientImpl::createWorkerContextProxy);
 }

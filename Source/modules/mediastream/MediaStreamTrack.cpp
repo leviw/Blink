@@ -24,13 +24,13 @@
  */
 
 #include "config.h"
-#include "MediaStreamTrack.h"
+#include "modules/mediastream/MediaStreamTrack.h"
 
 #if ENABLE(MEDIA_STREAM)
 
-#include "Event.h"
-#include "MediaStreamCenter.h"
-#include "MediaStreamComponent.h"
+#include "core/dom/Event.h"
+#include "core/platform/mediastream/MediaStreamCenter.h"
+#include "core/platform/mediastream/MediaStreamComponent.h"
 
 namespace WebCore {
 
@@ -157,7 +157,6 @@ MediaStreamComponent* MediaStreamTrack::component()
 void MediaStreamTrack::stop()
 {
     m_stopped = true;
-    didEndTrack();
 }
 
 const AtomicString& MediaStreamTrack::interfaceName() const

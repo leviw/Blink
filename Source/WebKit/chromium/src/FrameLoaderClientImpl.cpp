@@ -36,6 +36,7 @@
 #include "Chrome.h"
 #include "Document.h"
 #include "DocumentLoader.h"
+#include "EventHandler.h"
 #include "FormState.h"
 #include "FrameLoadRequest.h"
 #include "FrameLoader.h"
@@ -52,13 +53,13 @@
 #include "MouseEvent.h"
 #include "Page.h"
 #include "PluginData.h"
-#include "PluginDataChromium.h"
 #include "ProgressTracker.h"
 #include "ResourceHandleInternal.h"
 #include "ResourceLoader.h"
 #if ENABLE(MEDIA_STREAM)
 #include "RTCPeerConnectionHandlerChromium.h"
 #endif
+#include "ScriptController.h"
 #include "Settings.h"
 #include "SocketStreamHandleInternal.h"
 #include "UserGestureIndicator.h"
@@ -301,36 +302,11 @@ void FrameLoaderClientImpl::assignIdentifierToInitialRequest(
     }
 }
 
-// If the request being loaded by |loader| is a frame, update the ResourceType.
-// A subresource in this context is anything other than a frame --
-// this includes images and xmlhttp requests.  It is important to note that a
-// subresource is NOT limited to stuff loaded through the frame's subresource
-// loader. Synchronous xmlhttp requests for example, do not go through the
-// subresource loader, but we still label them as TargetIsSubresource.
-//
-// The important edge cases to consider when modifying this function are
-// how synchronous resource loads are treated during load/unload threshold.
-static void setTargetTypeFromLoader(ResourceRequest& request, DocumentLoader* loader)
-{
-    if (loader == loader->frameLoader()->provisionalDocumentLoader()) {
-        ResourceRequest::TargetType type;
-        if (loader->frameLoader()->isLoadingMainFrame())
-            type = ResourceRequest::TargetIsMainFrame;
-        else
-            type = ResourceRequest::TargetIsSubframe;
-        request.setTargetType(type);
-    }
-}
-
 void FrameLoaderClientImpl::dispatchWillSendRequest(
     DocumentLoader* loader, unsigned long identifier, ResourceRequest& request,
     const ResourceResponse& redirectResponse)
 {
     if (loader) {
-        // We want to distinguish between a request for a document to be loaded into
-        // the main frame, a sub-frame, or the sub-objects in that document.
-        setTargetTypeFromLoader(request, loader);
-
         // Avoid repeating a form submission when navigating back or forward.
         if (loader == loader->frameLoader()->provisionalDocumentLoader()
             && request.httpMethod() == "POST"
@@ -352,22 +328,6 @@ void FrameLoaderClientImpl::dispatchWillSendRequest(
         m_webFrame->client()->willSendRequest(
             m_webFrame, identifier, webreq, webresp);
     }
-}
-
-bool FrameLoaderClientImpl::shouldUseCredentialStorage(
-    DocumentLoader*, unsigned long identifier)
-{
-    // FIXME
-    // Intended to pass through to a method on the resource load delegate.
-    // If implemented, that method controls whether the browser should ask the
-    // networking layer for a stored default credential for the page (say from
-    // the Mac OS keychain). If the method returns false, the user should be
-    // presented with an authentication challenge whether or not the networking
-    // layer has a credential stored.
-    // This returns true for backward compatibility: the ability to override the
-    // system credential store is new. (Actually, not yet fully implemented in
-    // WebKit, as of this writing.)
-    return true;
 }
 
 void FrameLoaderClientImpl::dispatchDidReceiveResponse(DocumentLoader* loader,
@@ -844,71 +804,34 @@ void FrameLoaderClientImpl::dispatchShow()
         webView->client()->show(webView->initialNavigationPolicy());
 }
 
-void FrameLoaderClientImpl::dispatchDecidePolicyForResponse(
-     FramePolicyFunction function,
-     const ResourceResponse& response,
-     const ResourceRequest&)
-{
-    PolicyAction action;
-
-    int statusCode = response.httpStatusCode();
-    if (statusCode == 204 || statusCode == 205) {
-        // The server does not want us to replace the page contents.
-        action = PolicyIgnore;
-    } else if (WebCore::contentDispositionType(response.httpHeaderField("Content-Disposition")) == WebCore::ContentDispositionAttachment) {
-        // The server wants us to download instead of replacing the page contents.
-        // Downloading is handled by the embedder, but we still get the initial
-        // response so that we can ignore it and clean up properly.
-        action = PolicyIgnore;
-    } else if (!canShowMIMEType(response.mimeType())) {
-        // Make sure that we can actually handle this type internally.
-        action = PolicyIgnore;
-    } else {
-        // OK, we will render this page.
-        action = PolicyUse;
-    }
-
-    // NOTE: PolicyChangeError will be generated when action is not PolicyUse.
-    (m_webFrame->frame()->loader()->policyChecker()->*function)(action);
-}
-
-void FrameLoaderClientImpl::dispatchDecidePolicyForNewWindowAction(
-    FramePolicyFunction function,
+PolicyAction FrameLoaderClientImpl::policyForNewWindowAction(
     const NavigationAction& action,
-    const ResourceRequest& request,
-    PassRefPtr<FormState> formState,
     const String& frameName)
 {
     WebNavigationPolicy navigationPolicy;
     if (!actionSpecifiesNavigationPolicy(action, &navigationPolicy))
         navigationPolicy = WebNavigationPolicyNewForegroundTab;
 
-    PolicyAction policyAction;
     if (navigationPolicy == WebNavigationPolicyDownload)
-        policyAction = PolicyDownload;
-    else {
-        policyAction = PolicyUse;
+        return PolicyDownload;
 
-        // Remember the disposition for when dispatchCreatePage is called.  It is
-        // unfortunate that WebCore does not provide us with any context when
-        // creating or showing the new window that would allow us to avoid having
-        // to keep this state.
-        m_nextNavigationPolicy = navigationPolicy;
+    // Remember the disposition for when dispatchCreatePage is called.  It is
+    // unfortunate that WebCore does not provide us with any context when
+    // creating or showing the new window that would allow us to avoid having
+    // to keep this state.
+    m_nextNavigationPolicy = navigationPolicy;
 
-        // Store the disposition on the opener ChromeClientImpl so that we can pass
-        // it to WebViewClient::createView.
-        ChromeClientImpl* chromeClient = static_cast<ChromeClientImpl*>(m_webFrame->frame()->page()->chrome()->client());
-        chromeClient->setNewWindowNavigationPolicy(navigationPolicy);
-    }
-    (m_webFrame->frame()->loader()->policyChecker()->*function)(policyAction);
+    // Store the disposition on the opener ChromeClientImpl so that we can pass
+    // it to WebViewClient::createView.
+    ChromeClientImpl* chromeClient = static_cast<ChromeClientImpl*>(m_webFrame->frame()->page()->chrome()->client());
+    chromeClient->setNewWindowNavigationPolicy(navigationPolicy);
+
+    return PolicyUse;
 }
 
-void FrameLoaderClientImpl::dispatchDecidePolicyForNavigationAction(
-    FramePolicyFunction function,
+PolicyAction FrameLoaderClientImpl::decidePolicyForNavigationAction(
     const NavigationAction& action,
-    const ResourceRequest& request,
-    PassRefPtr<FormState> formState) {
-    PolicyAction policyAction = PolicyIgnore;
+    const ResourceRequest& request) {
 
     // It is valid for this function to be invoked in code paths where the
     // webview is closed.
@@ -929,36 +852,21 @@ void FrameLoaderClientImpl::dispatchDecidePolicyForNavigationAction(
             WebNavigationType webnavType =
                 WebDataSourceImpl::toWebNavigationType(action.type());
 
-            RefPtr<Node> node;
-            for (const Event* event = action.event(); event; event = event->underlyingEvent()) {
-                if (event->isMouseEvent()) {
-                    const MouseEvent* mouseEvent =
-                        static_cast<const MouseEvent*>(event);
-                    node = m_webFrame->frame()->eventHandler()->hitTestResultAtPoint(mouseEvent->absoluteLocation()).innerNonSharedNode();
-                    break;
-                }
-            }
-            WebNode originatingNode(node);
-
             navigationPolicy = m_webFrame->client()->decidePolicyForNavigation(
-                m_webFrame, ds->request(), webnavType, originatingNode,
-                navigationPolicy, isRedirect);
+                m_webFrame, ds->request(), webnavType, navigationPolicy, isRedirect);
         }
 
         if (navigationPolicy == WebNavigationPolicyCurrentTab)
-            policyAction = PolicyUse;
+            return PolicyUse;
         else if (navigationPolicy == WebNavigationPolicyDownload)
-            policyAction = PolicyDownload;
-        else {
-            if (navigationPolicy != WebNavigationPolicyIgnore) {
+            return PolicyDownload;
+        else if (navigationPolicy != WebNavigationPolicyIgnore) {
                 WrappedResourceRequest webreq(request);
                 m_webFrame->client()->loadURLExternally(m_webFrame, webreq, navigationPolicy);
-            }
-            policyAction = PolicyIgnore;
         }
     }
 
-    (m_webFrame->frame()->loader()->policyChecker()->*function)(policyAction);
+    return PolicyIgnore;
 }
 
 void FrameLoaderClientImpl::dispatchUnableToImplementPolicy(const ResourceError& error)
@@ -980,12 +888,10 @@ void FrameLoaderClientImpl::dispatchWillSendSubmitEvent(PassRefPtr<FormState> pr
         m_webFrame->client()->willSendSubmitEvent(m_webFrame, WebFormElement(prpFormState->form()));
 }
 
-void FrameLoaderClientImpl::dispatchWillSubmitForm(FramePolicyFunction function,
-    PassRefPtr<FormState> formState)
+void FrameLoaderClientImpl::dispatchWillSubmitForm(PassRefPtr<FormState> formState)
 {
     if (m_webFrame->client())
         m_webFrame->client()->willSubmitForm(m_webFrame, WebFormElement(formState->form()));
-    (m_webFrame->frame()->loader()->policyChecker()->*function)(PolicyUse);
 }
 
 void FrameLoaderClientImpl::setMainDocumentError(DocumentLoader*,

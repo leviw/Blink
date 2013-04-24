@@ -31,14 +31,12 @@
 #ifndef WebMediaPlayerClientImpl_h
 #define WebMediaPlayerClientImpl_h
 
-#if ENABLE(VIDEO)
-
 #include "AudioSourceProvider.h"
-#include "MediaPlayerPrivate.h"
+#include "core/platform/graphics/MediaPlayerPrivate.h"
 #if defined(OS_ANDROID)
 #include "GrTexture.h"
-#include "SkRefCnt.h"
 #include "SkBitmap.h"
+#include "SkRefCnt.h"
 #endif
 #include "WebAudioSourceProviderClient.h"
 #include "WebMediaPlayerClient.h"
@@ -110,7 +108,6 @@ public:
     virtual double currentTime() const;
     virtual void seek(double time);
     virtual bool seeking() const;
-    virtual void setEndTime(double time);
     virtual void setRate(double);
     virtual bool paused() const;
     virtual void setVolume(double);
@@ -242,7 +239,5 @@ private:
 };
 
 } // namespace WebKit
-
-#endif
 
 #endif

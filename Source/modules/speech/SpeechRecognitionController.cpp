@@ -24,9 +24,7 @@
  */
 
 #include "config.h"
-#include "SpeechRecognitionController.h"
-
-#if ENABLE(SCRIPTED_SPEECH)
+#include "modules/speech/SpeechRecognitionController.h"
 
 namespace WebCore {
 
@@ -56,5 +54,3 @@ void provideSpeechRecognitionTo(Page* page, SpeechRecognitionClient* client)
 }
 
 } // namespace WebCore
-
-#endif // ENABLE(SCRIPTED_SPEECH)

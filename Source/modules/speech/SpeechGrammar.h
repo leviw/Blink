@@ -26,11 +26,9 @@
 #ifndef SpeechGrammar_h
 #define SpeechGrammar_h
 
-#if ENABLE(SCRIPTED_SPEECH)
-
-#include "KURL.h"
-#include <wtf/RefCounted.h>
-#include <wtf/text/WTFString.h>
+#include "core/platform/KURL.h"
+#include "wtf/RefCounted.h"
+#include "wtf/text/WTFString.h"
 
 namespace WebCore {
 
@@ -57,7 +55,5 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // ENABLE(SCRIPTED_SPEECH)
 
 #endif // SpeechGrammar_h

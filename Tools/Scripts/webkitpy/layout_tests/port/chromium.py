@@ -81,6 +81,10 @@ class ChromiumPort(Port):
     FALLBACK_PATHS = {}
 
     @classmethod
+    def latest_platform_fallback_path(cls):
+        return cls.FALLBACK_PATHS[cls.SUPPORTED_VERSIONS[-1]]
+
+    @classmethod
     def _static_build_path(cls, filesystem, build_directory, chromium_base, webkit_base, configuration, comps):
         if build_directory:
             return filesystem.join(build_directory, configuration, *comps)
@@ -126,7 +130,7 @@ class ChromiumPort(Port):
         default_count = super(ChromiumPort, self).default_child_processes()
         # Since content_shell spawns multiple subprocesses, we need to reduce
         # the number of running processes.
-        if self.driver_name() == 'content_shell' or self.driver_name() == 'Content Shell':
+        if self.driver_name() == self.CONTENT_SHELL_NAME:
             default_count = int(.75 * default_count)
 
         return default_count
@@ -360,12 +364,9 @@ class ChromiumPort(Port):
         return True
 
     def _port_specific_expectations_files(self):
-        paths = [self.path_to_test_expectations_file()]
-        skia_expectations_path = self.path_from_chromium_base('skia', 'skia_test_expectations.txt')
-        # FIXME: we should probably warn if this file is missing in some situations.
-        # See the discussion in webkit.org/b/97699.
-        if self._filesystem.exists(skia_expectations_path):
-            paths.append(skia_expectations_path)
+        paths = []
+        paths.append(self.path_from_chromium_base('skia', 'skia_test_expectations.txt'))
+        paths.append(self._filesystem.join(self.layout_tests_dir(), 'NeverFixTests'))
 
         builder_name = self.get_option('builder_name', 'DUMMY_BUILDER_NAME')
         if builder_name == 'DUMMY_BUILDER_NAME' or '(deps)' in builder_name or builder_name in self.try_builder_names:

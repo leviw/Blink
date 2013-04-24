@@ -25,9 +25,7 @@
 
 #include "config.h"
 
-#if ENABLE(SCRIPTED_SPEECH)
-
-#include "SpeechRecognitionResult.h"
+#include "modules/speech/SpeechRecognitionResult.h"
 
 namespace WebCore {
 
@@ -55,5 +53,3 @@ SpeechRecognitionResult::SpeechRecognitionResult(const Vector<RefPtr<SpeechRecog
 }
 
 } // namespace WebCore
-
-#endif // ENABLE(SCRIPTED_SPEECH)

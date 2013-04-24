@@ -26,14 +26,14 @@
 #ifndef IDBCursor_h
 #define IDBCursor_h
 
-#include "IDBKey.h"
-#include "IDBTransaction.h"
-#include "IndexedDB.h"
-#include "ScriptValue.h"
-#include "ScriptWrappable.h"
-#include <wtf/PassRefPtr.h>
-#include <wtf/RefCounted.h>
-#include <wtf/RefPtr.h>
+#include "bindings/v8/ScriptValue.h"
+#include "bindings/v8/ScriptWrappable.h"
+#include "modules/indexeddb/IDBKey.h"
+#include "modules/indexeddb/IDBTransaction.h"
+#include "modules/indexeddb/IndexedDB.h"
+#include "wtf/PassRefPtr.h"
+#include "wtf/RefCounted.h"
+#include "wtf/RefPtr.h"
 
 namespace WebCore {
 
@@ -68,8 +68,6 @@ public:
 
     PassRefPtr<IDBRequest> update(ScriptState*, ScriptValue&, ExceptionCode&);
     void advance(unsigned long, ExceptionCode&);
-    // FIXME: Try to modify the code generator so this overload is unneeded.
-    void continueFunction(ScriptExecutionContext*, ExceptionCode& ec) { continueFunction(static_cast<IDBKey*>(0), ec); }
     void continueFunction(ScriptExecutionContext*, const ScriptValue& key, ExceptionCode&);
     PassRefPtr<IDBRequest> deleteFunction(ScriptExecutionContext*, ExceptionCode&);
 
@@ -85,6 +83,8 @@ protected:
 
 private:
     PassRefPtr<IDBObjectStore> effectiveObjectStore();
+
+    bool isDeleted() const;
 
     RefPtr<IDBCursorBackendInterface> m_backend;
     RefPtr<IDBRequest> m_request;

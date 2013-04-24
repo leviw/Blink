@@ -27,6 +27,7 @@
 #include "ExceptionCode.h"
 #include "Frame.h"
 #include "RuntimeEnabledFeatures.h"
+#include "ScriptController.h"
 #include "TestSupplemental.h"
 #include "V8Binding.h"
 #include "V8DOMWrapper.h"
@@ -71,6 +72,22 @@ inline void checkTypeOrDieTrying(TestInterface* object)
 }
 #endif // ENABLE(BINDING_INTEGRITY)
 
+#if defined(OS_WIN)
+// In ScriptWrappable, the use of extern function prototypes inside templated static methods has an issue on windows.
+// These prototypes do not pick up the surrounding namespace, so drop out of WebCore as a workaround.
+} // namespace WebCore
+using WebCore::ScriptWrappable;
+using WebCore::V8TestInterface;
+using WebCore::TestInterface;
+#endif
+void initializeScriptWrappableForInterface(TestInterface* object)
+{
+    if (ScriptWrappable::wrapperCanBeStoredInObject(object))
+        ScriptWrappable::setTypeInfoInObject(object, &V8TestInterface::info);
+}
+#if defined(OS_WIN)
+namespace WebCore {
+#endif
 WrapperTypeInfo V8TestInterface::info = { V8TestInterface::GetTemplate, V8TestInterface::derefObject, V8TestInterface::toActiveDOMObject, 0, 0, V8TestInterface::installPerContextPrototypeProperties, 0, WrapperTypeObjectPrototype };
 
 namespace TestInterfaceV8Internal {
@@ -383,10 +400,10 @@ static const V8DOMConfiguration::BatchedAttribute V8TestInterfaceAttrs[] = {
 
 static const V8DOMConfiguration::BatchedMethod V8TestInterfaceMethods[] = {
 #if ENABLE(Condition11) || ENABLE(Condition12)
-    {"supplementalMethod1", TestInterfaceV8Internal::supplementalMethod1MethodCallback, 0},
+    {"supplementalMethod1", TestInterfaceV8Internal::supplementalMethod1MethodCallback, 0, 0},
 #endif
 #if ENABLE(Condition11) || ENABLE(Condition12)
-    {"supplementalMethod3", TestInterfaceV8Internal::supplementalMethod3MethodCallback, 0},
+    {"supplementalMethod3", TestInterfaceV8Internal::supplementalMethod3MethodCallback, 0, 0},
 #endif
 };
 
@@ -428,11 +445,11 @@ static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestInterfaceTemplate(v8:
         V8TestInterfaceMethods, WTF_ARRAY_LENGTH(V8TestInterfaceMethods), isolate, currentWorldType);
     UNUSED_PARAM(defaultSignature); // In some cases, it will not be used.
     desc->SetCallHandler(V8TestInterface::constructorCallback);
+    desc->SetLength(1);
     v8::Local<v8::ObjectTemplate> instance = desc->InstanceTemplate();
     v8::Local<v8::ObjectTemplate> proto = desc->PrototypeTemplate();
     UNUSED_PARAM(instance); // In some cases, it will not be used.
     UNUSED_PARAM(proto); // In some cases, it will not be used.
-    
 
     // Custom Signature 'supplementalMethod2'
     const int supplementalMethod2Argc = 2;

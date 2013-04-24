@@ -29,17 +29,18 @@
  */
 
 #include "config.h"
-#include "DOMWrapperWorld.h"
+#include "bindings/v8/DOMWrapperWorld.h"
 
-#include "DOMDataStore.h"
-#include "V8Binding.h"
-#include "V8DOMActivityLogger.h"
 #include "V8DOMWindow.h"
-#include "V8DOMWrapper.h"
-#include "WrapperTypeInfo.h"
-#include <wtf/HashTraits.h>
-#include <wtf/MainThread.h>
-#include <wtf/StdLibExtras.h>
+#include "bindings/v8/DOMDataStore.h"
+#include "bindings/v8/V8Binding.h"
+#include "bindings/v8/V8DOMActivityLogger.h"
+#include "bindings/v8/V8DOMWrapper.h"
+#include "bindings/v8/WrapperTypeInfo.h"
+#include "core/dom/ScriptExecutionContext.h"
+#include "wtf/HashTraits.h"
+#include "wtf/MainThread.h"
+#include "wtf/StdLibExtras.h"
 
 namespace WebCore {
 
@@ -64,6 +65,18 @@ DOMWrapperWorld::DOMWrapperWorld(int worldId, int extensionGroup)
         m_domDataStore = adoptPtr(new DOMDataStore(IsolatedWorld));
 }
 
+DOMWrapperWorld* DOMWrapperWorld::current()
+{
+    ASSERT(v8::Context::InContext());
+    v8::Handle<v8::Context> context = v8::Context::GetCurrent();
+    if (!V8DOMWrapper::isWrapperOfType(toInnerGlobalObject(context), &V8DOMWindow::info))
+        return 0;
+    ASSERT(isMainThread());
+    if (DOMWrapperWorld* world = isolatedWorld(context))
+        return world;
+    return mainThreadNormalWorld();
+}
+
 DOMWrapperWorld* mainThreadNormalWorld()
 {
     ASSERT(isMainThread());
@@ -84,25 +97,6 @@ bool DOMWrapperWorld::contextHasCorrectPrototype(v8::Handle<v8::Context> context
     if (initializingWindow)
         return true;
     return V8DOMWrapper::isWrapperOfType(toInnerGlobalObject(context), &V8DOMWindow::info);
-}
-
-template<>
-void WeakHandleListener<DOMWrapperWorld>::callback(v8::Isolate* isolate, v8::Persistent<v8::Value> object, DOMWrapperWorld* world)
-{
-    object.Dispose(isolate);
-    object.Clear();
-    world->deref();
-}
-
-void DOMWrapperWorld::makeContextWeak(v8::Handle<v8::Context> context)
-{
-    ASSERT(isIsolatedWorld());
-    ASSERT(isolatedWorld(context) == this);
-    v8::Isolate* isolate = context->GetIsolate();
-    v8::Persistent<v8::Context> persistent = v8::Persistent<v8::Context>::New(isolate, context);
-    WeakHandleListener<DOMWrapperWorld>::makeWeak(isolate, persistent, this);
-    // Matching deref is in weak callback.
-    this->ref();
 }
 
 void DOMWrapperWorld::setIsolatedWorldField(v8::Handle<v8::Context> context)

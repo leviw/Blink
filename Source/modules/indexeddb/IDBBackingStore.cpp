@@ -24,25 +24,24 @@
  */
 
 #include "config.h"
-#include "IDBBackingStore.h"
+#include "modules/indexeddb/IDBBackingStore.h"
 
-#include "FileSystem.h"
-#include "HistogramSupport.h"
-#include "IDBKey.h"
-#include "IDBKeyPath.h"
-#include "IDBKeyRange.h"
-#include "IDBLevelDBCoding.h"
-#include "IDBMetadata.h"
-#include "IDBTracing.h"
-#include "LevelDBComparator.h"
-#include "LevelDBDatabase.h"
-#include "LevelDBIterator.h"
-#include "LevelDBSlice.h"
-#include "LevelDBTransaction.h"
-#include "SecurityOrigin.h"
-#include "SharedBuffer.h"
+#include "core/platform/FileSystem.h"
+#include "core/platform/HistogramSupport.h"
+#include "core/platform/SharedBuffer.h"
+#include "core/platform/leveldb/LevelDBComparator.h"
+#include "core/platform/leveldb/LevelDBDatabase.h"
+#include "core/platform/leveldb/LevelDBIterator.h"
+#include "core/platform/leveldb/LevelDBSlice.h"
+#include "core/platform/leveldb/LevelDBTransaction.h"
+#include "modules/indexeddb/IDBKey.h"
+#include "modules/indexeddb/IDBKeyPath.h"
+#include "modules/indexeddb/IDBKeyRange.h"
+#include "modules/indexeddb/IDBLevelDBCoding.h"
+#include "modules/indexeddb/IDBMetadata.h"
+#include "modules/indexeddb/IDBTracing.h"
 #include <public/Platform.h>
-#include <wtf/Assertions.h>
+#include "wtf/Assertions.h"
 
 namespace WebCore {
 
@@ -371,13 +370,13 @@ enum IDBLevelDBBackingStoreOpenResult {
     IDBLevelDBBackingStoreOpenMax,
 };
 
-PassRefPtr<IDBBackingStore> IDBBackingStore::open(SecurityOrigin* securityOrigin, const String& pathBaseArg, const String& fileIdentifier)
+PassRefPtr<IDBBackingStore> IDBBackingStore::open(const String& databaseIdentifier, const String& pathBaseArg, const String& fileIdentifier)
 {
     DefaultLevelDBFactory levelDBFactory;
-    return IDBBackingStore::open(securityOrigin, pathBaseArg, fileIdentifier, &levelDBFactory);
+    return IDBBackingStore::open(databaseIdentifier, pathBaseArg, fileIdentifier, &levelDBFactory);
 }
 
-PassRefPtr<IDBBackingStore> IDBBackingStore::open(SecurityOrigin* securityOrigin, const String& pathBaseArg, const String& fileIdentifier, LevelDBFactory* levelDBFactory)
+PassRefPtr<IDBBackingStore> IDBBackingStore::open(const String& databaseIdentifier, const String& pathBaseArg, const String& fileIdentifier, LevelDBFactory* levelDBFactory)
 {
     IDB_TRACE("IDBBackingStore::open");
     ASSERT(!pathBaseArg.isEmpty());
@@ -394,7 +393,7 @@ PassRefPtr<IDBBackingStore> IDBBackingStore::open(SecurityOrigin* securityOrigin
         return PassRefPtr<IDBBackingStore>();
     }
 
-    String path = pathByAppendingComponent(pathBase, securityOrigin->databaseIdentifier() + ".indexeddb.leveldb");
+    String path = pathByAppendingComponent(pathBase, databaseIdentifier + ".indexeddb.leveldb");
 
     db = levelDBFactory->openLevelDB(path, comparator.get());
     if (db) {
@@ -441,13 +440,13 @@ PassRefPtr<IDBBackingStore> IDBBackingStore::open(SecurityOrigin* securityOrigin
     return create(fileIdentifier, db.release(), comparator.release());
 }
 
-PassRefPtr<IDBBackingStore> IDBBackingStore::openInMemory(SecurityOrigin* securityOrigin, const String& identifier)
+PassRefPtr<IDBBackingStore> IDBBackingStore::openInMemory(const String& identifier)
 {
     DefaultLevelDBFactory levelDBFactory;
-    return IDBBackingStore::openInMemory(securityOrigin, identifier, &levelDBFactory);
+    return IDBBackingStore::openInMemory(identifier, &levelDBFactory);
 }
 
-PassRefPtr<IDBBackingStore> IDBBackingStore::openInMemory(SecurityOrigin* securityOrigin, const String& identifier, LevelDBFactory* levelDBFactory)
+PassRefPtr<IDBBackingStore> IDBBackingStore::openInMemory(const String& identifier, LevelDBFactory* levelDBFactory)
 {
     IDB_TRACE("IDBBackingStore::openInMemory");
 

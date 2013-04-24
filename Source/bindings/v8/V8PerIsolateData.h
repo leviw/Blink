@@ -26,13 +26,13 @@
 #ifndef V8PerIsolateData_h
 #define V8PerIsolateData_h
 
-#include "ScopedPersistent.h"
-#include "WrapperTypeInfo.h"
+#include "bindings/v8/ScopedPersistent.h"
+#include "bindings/v8/WrapperTypeInfo.h"
 #include <v8.h>
-#include <wtf/Forward.h>
-#include <wtf/HashMap.h>
-#include <wtf/OwnPtr.h>
-#include <wtf/Vector.h>
+#include "wtf/Forward.h"
+#include "wtf/HashMap.h"
+#include "wtf/OwnPtr.h"
+#include "wtf/Vector.h"
 
 namespace WebCore {
 
@@ -142,6 +142,8 @@ public:
 
     bool hasInstance(WrapperTypeInfo*, v8::Handle<v8::Value>, WrapperWorldType);
 
+    v8::Local<v8::Context> ensureRegexContext();
+
 private:
     explicit V8PerIsolateData(v8::Isolate*);
     ~V8PerIsolateData();
@@ -163,7 +165,7 @@ private:
 
     OwnPtr<V8HiddenPropertyName> m_hiddenPropertyName;
     ScopedPersistent<v8::Value> m_liveRoot;
-    ScopedPersistent<v8::Context> m_auxiliaryContext;
+    ScopedPersistent<v8::Context> m_regexContext;
 
     bool m_constructorMode;
     friend class ConstructorMode;

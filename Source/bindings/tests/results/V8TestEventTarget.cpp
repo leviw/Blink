@@ -26,6 +26,7 @@
 #include "ExceptionCode.h"
 #include "Frame.h"
 #include "RuntimeEnabledFeatures.h"
+#include "ScriptController.h"
 #include "V8Binding.h"
 #include "V8Collection.h"
 #include "V8DOMWrapper.h"
@@ -68,6 +69,22 @@ inline void checkTypeOrDieTrying(TestEventTarget* object)
 }
 #endif // ENABLE(BINDING_INTEGRITY)
 
+#if defined(OS_WIN)
+// In ScriptWrappable, the use of extern function prototypes inside templated static methods has an issue on windows.
+// These prototypes do not pick up the surrounding namespace, so drop out of WebCore as a workaround.
+} // namespace WebCore
+using WebCore::ScriptWrappable;
+using WebCore::V8TestEventTarget;
+using WebCore::TestEventTarget;
+#endif
+void initializeScriptWrappableForInterface(TestEventTarget* object)
+{
+    if (ScriptWrappable::wrapperCanBeStoredInObject(object))
+        ScriptWrappable::setTypeInfoInObject(object, &V8TestEventTarget::info);
+}
+#if defined(OS_WIN)
+namespace WebCore {
+#endif
 WrapperTypeInfo V8TestEventTarget::info = { V8TestEventTarget::GetTemplate, V8TestEventTarget::derefObject, 0, V8TestEventTarget::toEventTarget, 0, V8TestEventTarget::installPerContextPrototypeProperties, 0, WrapperTypeObjectPrototype };
 
 namespace TestEventTargetV8Internal {
@@ -168,11 +185,44 @@ static v8::Handle<v8::Value> dispatchEventMethodCallback(const v8::Arguments& ar
 } // namespace TestEventTargetV8Internal
 
 static const V8DOMConfiguration::BatchedMethod V8TestEventTargetMethods[] = {
-    {"item", TestEventTargetV8Internal::itemMethodCallback, 0},
-    {"namedItem", TestEventTargetV8Internal::namedItemMethodCallback, 0},
-    {"addEventListener", TestEventTargetV8Internal::addEventListenerMethodCallback, 0},
-    {"removeEventListener", TestEventTargetV8Internal::removeEventListenerMethodCallback, 0},
+    {"item", TestEventTargetV8Internal::itemMethodCallback, 0, 1},
+    {"namedItem", TestEventTargetV8Internal::namedItemMethodCallback, 0, 1},
+    {"addEventListener", TestEventTargetV8Internal::addEventListenerMethodCallback, 0, 2},
+    {"removeEventListener", TestEventTargetV8Internal::removeEventListenerMethodCallback, 0, 2},
 };
+
+v8::Handle<v8::Value> V8TestEventTarget::indexedPropertyGetter(uint32_t index, const v8::AccessorInfo& info)
+{
+    ASSERT(V8DOMWrapper::maybeDOMWrapper(info.Holder()));
+    TestEventTarget* collection = toNative(info.Holder());
+    RefPtr<Node> element = collection->item(index);
+    if (!element)
+        return v8Undefined();
+    return toV8(element.release(), info.Holder(), info.GetIsolate());
+}
+v8::Handle<v8::Value> V8TestEventTarget::namedPropertyGetter(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+{
+    if (!info.Holder()->GetRealNamedPropertyInPrototypeChain(name).IsEmpty())
+        return v8Undefined();
+    if (info.Holder()->HasRealNamedCallbackProperty(name))
+        return v8Undefined();
+
+    v8::Local<v8::Object> object = info.Holder();
+    v8::Handle<v8::Object> creationContext = info.Holder();
+    v8::Isolate* isolate = info.GetIsolate();
+
+    ASSERT(V8DOMWrapper::maybeDOMWrapper(object));
+    ASSERT(toWrapperTypeInfo(object) != &V8Node::info);
+    TestEventTarget* collection = toNative(object);
+
+    AtomicString propertyName = toWebCoreAtomicStringWithNullCheck(name);
+    RefPtr<Node> element = collection->namedItem(propertyName);
+
+    if (!element)
+        return v8Undefined();
+
+    return toV8(element.release(), creationContext, isolate);
+}
 
 static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestEventTargetTemplate(v8::Persistent<v8::FunctionTemplate> desc, v8::Isolate* isolate, WrapperWorldType currentWorldType)
 {
@@ -187,9 +237,8 @@ static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestEventTargetTemplate(v
     v8::Local<v8::ObjectTemplate> proto = desc->PrototypeTemplate();
     UNUSED_PARAM(instance); // In some cases, it will not be used.
     UNUSED_PARAM(proto); // In some cases, it will not be used.
-    
-    setCollectionIndexedGetter<TestEventTarget, Node>(desc);
-    setCollectionNamedGetter<TestEventTarget, Node>(desc);
+    desc->InstanceTemplate()->SetIndexedPropertyHandler(V8TestEventTarget::indexedPropertyGetter, 0, 0, 0, nodeCollectionIndexedPropertyEnumerator<TestEventTarget>);
+    desc->InstanceTemplate()->SetNamedPropertyHandler(V8TestEventTarget::namedPropertyGetter, 0, 0, 0, 0);
     desc->InstanceTemplate()->MarkAsUndetectable();
 
     // Custom Signature 'dispatchEvent'

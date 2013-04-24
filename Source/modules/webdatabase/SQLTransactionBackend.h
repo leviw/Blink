@@ -28,19 +28,18 @@
 #ifndef SQLTransactionBackend_h
 #define SQLTransactionBackend_h
 
-#include "AbstractSQLStatement.h"
-#include "AbstractSQLTransactionBackend.h"
-#include "DatabaseBasicTypes.h"
-#include "SQLTransactionStateMachine.h"
-#include <wtf/Deque.h>
-#include <wtf/Forward.h>
-#include <wtf/text/WTFString.h>
+#include "modules/webdatabase/AbstractSQLStatement.h"
+#include "modules/webdatabase/AbstractSQLTransactionBackend.h"
+#include "modules/webdatabase/DatabaseBasicTypes.h"
+#include "modules/webdatabase/SQLTransactionStateMachine.h"
+#include "wtf/Deque.h"
+#include "wtf/Forward.h"
+#include "wtf/text/WTFString.h"
 
 namespace WebCore {
 
 class AbstractSQLTransaction;
 class DatabaseBackend;
-class OriginLock;
 class SQLError;
 class SQLiteTransaction;
 class SQLStatementBackend;
@@ -106,9 +105,6 @@ private:
     SQLTransactionState runCurrentStatementAndGetNextState();
 
     void getNextStatement();
-
-    void acquireOriginLock();
-    void releaseOriginLockIfNeeded();
 
     RefPtr<AbstractSQLTransaction> m_frontend; // Has a reference cycle, and will break in doCleanup().
     RefPtr<SQLStatementBackend> m_currentStatementBackend;

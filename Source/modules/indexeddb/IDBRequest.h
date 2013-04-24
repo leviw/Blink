@@ -29,18 +29,18 @@
 #ifndef IDBRequest_h
 #define IDBRequest_h
 
-#include "ActiveDOMObject.h"
-#include "DOMError.h"
-#include "DOMRequestState.h"
-#include "DOMStringList.h"
-#include "Event.h"
-#include "EventListener.h"
-#include "EventNames.h"
-#include "EventTarget.h"
-#include "IDBAny.h"
-#include "IDBCallbacks.h"
-#include "IDBCursor.h"
-#include "ScriptWrappable.h"
+#include "bindings/v8/DOMRequestState.h"
+#include "bindings/v8/ScriptWrappable.h"
+#include "core/dom/ActiveDOMObject.h"
+#include "core/dom/DOMError.h"
+#include "core/dom/DOMStringList.h"
+#include "core/dom/Event.h"
+#include "core/dom/EventListener.h"
+#include "core/dom/EventNames.h"
+#include "core/dom/EventTarget.h"
+#include "modules/indexeddb/IDBAny.h"
+#include "modules/indexeddb/IDBCallbacks.h"
+#include "modules/indexeddb/IDBCursor.h"
 
 namespace WebCore {
 
@@ -82,7 +82,7 @@ public:
 
     // IDBCallbacks
     virtual void onError(PassRefPtr<IDBDatabaseError>);
-    virtual void onSuccess(PassRefPtr<DOMStringList>);
+    virtual void onSuccess(const Vector<String>&);
     virtual void onSuccess(PassRefPtr<IDBCursorBackendInterface>, PassRefPtr<IDBKey>, PassRefPtr<IDBKey> primaryKey, PassRefPtr<SharedBuffer>);
     virtual void onSuccess(PassRefPtr<IDBKey>);
     virtual void onSuccess(PassRefPtr<SharedBuffer>);

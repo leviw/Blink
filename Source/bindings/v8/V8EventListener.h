@@ -31,9 +31,10 @@
 #ifndef V8EventListener_h
 #define V8EventListener_h
 
-#include "V8AbstractEventListener.h"
+#include "bindings/v8/DOMWrapperWorld.h"
+#include "bindings/v8/V8AbstractEventListener.h"
 #include <v8.h>
-#include <wtf/PassRefPtr.h>
+#include "wtf/PassRefPtr.h"
 
 namespace WebCore {
 
@@ -44,13 +45,13 @@ namespace WebCore {
     // that can handle the event.
     class V8EventListener : public V8AbstractEventListener {
     public:
-        static PassRefPtr<V8EventListener> create(v8::Local<v8::Object> listener, bool isAttribute, const WorldContextHandle& worldContext)
+        static PassRefPtr<V8EventListener> create(v8::Local<v8::Object> listener, bool isAttribute)
         {
-            return adoptRef(new V8EventListener(listener, isAttribute, worldContext));
+            return adoptRef(new V8EventListener(listener, isAttribute));
         }
 
     protected:
-        V8EventListener(v8::Local<v8::Object> listener, bool isAttribute, const WorldContextHandle& worldContext);
+        V8EventListener(v8::Local<v8::Object> listener, bool isAttribute);
 
         v8::Local<v8::Function> getListenerFunction(ScriptExecutionContext*);
 

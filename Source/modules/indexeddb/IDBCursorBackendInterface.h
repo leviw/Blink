@@ -26,8 +26,8 @@
 #ifndef IDBCursorBackendInterface_h
 #define IDBCursorBackendInterface_h
 
-#include <wtf/PassRefPtr.h>
-#include <wtf/RefCounted.h>
+#include "wtf/PassRefPtr.h"
+#include "wtf/RefCounted.h"
 
 namespace WebCore {
 
@@ -41,10 +41,10 @@ class IDBCursorBackendInterface : public RefCounted<IDBCursorBackendInterface> {
 public:
     virtual ~IDBCursorBackendInterface() {}
 
-    virtual void advance(unsigned long count, PassRefPtr<IDBCallbacks>, ExceptionCode&) = 0;
-    virtual void continueFunction(PassRefPtr<IDBKey> key, PassRefPtr<IDBCallbacks>, ExceptionCode&) = 0;
-    virtual void deleteFunction(PassRefPtr<IDBCallbacks>, ExceptionCode&) = 0;
-    virtual void prefetchContinue(int numberToFetch, PassRefPtr<IDBCallbacks>, ExceptionCode&) = 0;
+    virtual void advance(unsigned long count, PassRefPtr<IDBCallbacks>) = 0;
+    virtual void continueFunction(PassRefPtr<IDBKey> key, PassRefPtr<IDBCallbacks>) = 0;
+    virtual void deleteFunction(PassRefPtr<IDBCallbacks>) = 0;
+    virtual void prefetchContinue(int numberToFetch, PassRefPtr<IDBCallbacks>) = 0;
     virtual void prefetchReset(int usedPrefetches, int unusedPrefetches) = 0;
     virtual void postSuccessHandlerCallback() = 0;
 };

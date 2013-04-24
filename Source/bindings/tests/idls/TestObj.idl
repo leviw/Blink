@@ -85,7 +85,7 @@ enum TestEnumType { "", "EnumValue1", "EnumValue2", "EnumValue3" };
     [RaisesException] TestObj methodThatRequiresAllArgsAndThrows(DOMString strArg, TestObj objArg);
 
     void serializedValue(SerializedScriptValue serializedArg);
-    void optionsObject(Dictionary oo, [Optional] Dictionary ooo);
+    void optionsObject(Dictionary oo, optional Dictionary ooo);
 
     // Exceptions
     [RaisesException] void methodWithException();
@@ -101,10 +101,10 @@ enum TestEnumType { "", "EnumValue1", "EnumValue2", "EnumValue3" };
 
     void addEventListener(DOMString type, 
                           EventListener listener, 
-                          [Optional] boolean useCapture);
+                          optional boolean useCapture);
     void removeEventListener(DOMString type, 
                              EventListener listener, 
-                             [Optional] boolean useCapture);
+                             optional boolean useCapture);
 
     // 'CallWith' extended attribute
     [CallWith=ScriptState] void withScriptStateVoid();
@@ -115,7 +115,6 @@ enum TestEnumType { "", "EnumValue1", "EnumValue2", "EnumValue3" };
     [CallWith=ScriptExecutionContext|ScriptState] void withScriptExecutionContextAndScriptState();
     [CallWith=ScriptExecutionContext|ScriptState, RaisesException] TestObj withScriptExecutionContextAndScriptStateObjException();
     [CallWith=  ScriptExecutionContext  |  ScriptState  ] TestObj withScriptExecutionContextAndScriptStateWithSpaces();
-    [CallWith=ScriptArguments|CallStack] void withScriptArgumentsAndCallStack();
 
     [CallWith=ScriptState] attribute long withScriptStateAttribute;
     [CallWith=ScriptExecutionContext] attribute TestObj withScriptExecutionContextAttribute;
@@ -124,22 +123,21 @@ enum TestEnumType { "", "EnumValue1", "EnumValue2", "EnumValue3" };
     [CallWith=ScriptExecutionContext|ScriptState] attribute TestObj withScriptExecutionContextAndScriptStateAttribute;
     [CallWith=ScriptExecutionContext|ScriptState, GetterRaisesException] attribute TestObj withScriptExecutionContextAndScriptStateAttributeRaises;
     [CallWith=  ScriptExecutionContext  |  ScriptState  ] attribute TestObj withScriptExecutionContextAndScriptStateWithSpacesAttribute;
-    [CallWith=ScriptArguments|CallStack] attribute TestObj withScriptArgumentsAndCallStackAttribute;
 
-    // 'Optional' extended attribute
-    void    methodWithOptionalArg([Optional] long opt);
-    void    methodWithNonOptionalArgAndOptionalArg(long nonOpt, [Optional] long opt);
-    void    methodWithNonOptionalArgAndTwoOptionalArgs(long nonOpt, [Optional] long opt1, [Optional] long opt2);
-    void    methodWithOptionalString([Optional] DOMString str);
-    void    methodWithOptionalStringIsUndefined([Optional=DefaultIsUndefined] DOMString str);
-    void    methodWithOptionalStringIsNullString([Optional=DefaultIsNullString] DOMString str);
+    // optional parameters
+    void    methodWithOptionalArg(optional long opt);
+    void    methodWithNonOptionalArgAndOptionalArg(long nonOpt, optional long opt);
+    void    methodWithNonOptionalArgAndTwoOptionalArgs(long nonOpt, optional long opt1, optional long opt2);
+    void    methodWithOptionalString(optional DOMString str);
+    void    methodWithOptionalStringIsUndefined([Default=Undefined] optional DOMString str);
+    void    methodWithOptionalStringIsNullString([Default=NullString] optional DOMString str);
 
     // 'Callback' extended attribute
     void    methodWithCallbackArg([Callback] TestCallback callback);
     void    methodWithNonCallbackArgAndCallbackArg(long nonCallback, [Callback] TestCallback callback);
-    void    methodWithCallbackAndOptionalArg([Callback, Optional] TestCallback callback);
+    void    methodWithCallbackAndOptionalArg([Callback] optional TestCallback callback);
     // static methods with 'Callback' extended attribute
-    static void    staticMethodWithCallbackAndOptionalArg([Callback, Optional] TestCallback callback);
+    static void    staticMethodWithCallbackAndOptionalArg([Callback] optional TestCallback callback);
     static void    staticMethodWithCallbackArg([Callback] TestCallback callback);
 
     // 'EnforceRange' extended attribute
@@ -176,7 +174,7 @@ enum TestEnumType { "", "EnumValue1", "EnumValue2", "EnumValue3" };
 
     // Overloads
     void    overloadedMethod(TestObj? objArg, [StrictTypeChecking] DOMString strArg);
-    void    overloadedMethod(TestObj? objArg, [Optional] long longArg);
+    void    overloadedMethod(TestObj? objArg, optional long longArg);
     void    overloadedMethod([StrictTypeChecking] DOMString strArg);
     void    overloadedMethod(long longArg);
     void    overloadedMethod([Callback] TestCallback callback);
@@ -189,7 +187,7 @@ enum TestEnumType { "", "EnumValue1", "EnumValue2", "EnumValue3" };
 
     // Class methods within JavaScript (like what's used for IDBKeyRange).
     static void classMethod();
-    static long classMethodWithOptional([Optional] long arg);
+    static long classMethodWithOptional(optional long arg);
     [Custom] static void classMethod2(long arg);
 
     // Static method with conditional on overloaded methods
@@ -275,4 +273,19 @@ enum TestEnumType { "", "EnumValue1", "EnumValue2", "EnumValue3" };
     [PerWorldBindings] void perWorldMethod();
     [PerWorldBindings] void overloadedPerWorldMethod(long longArg);
     [PerWorldBindings] void overloadedPerWorldMethod(DOMString strArg, long longArg);
+
+    [ActivityLog=Access] void activityLoggedMethod1(long longArg);
+    [PerWorldBindings, ActivityLog=Access] void activityLoggedMethod2(long longArg);
+    [PerWorldBindings, ActivityLog=AccessForIsolatedWorlds] void activityLoggedInIsolatedWorldMethod(long longArg);
+    [PerWorldBindings, ActivityLog=Access] void overloadedActivityLoggedMethod(long longArg);
+    [PerWorldBindings, ActivityLog=Access] void overloadedActivityLoggedMethod(DOMString strArg, long longArg);
+    [ActivityLog=Access] attribute long activityLoggedAttr1;
+    [PerWorldBindings, ActivityLog=Access] attribute long activityLoggedAttr2;
+    [PerWorldBindings, ActivityLog=AccessForIsolatedWorlds] attribute long activityLoggedInIsolatedWorldsAttr;
+    [ActivityLog=Setter] attribute long activityLoggedAttrSetter1;
+    [PerWorldBindings, ActivityLog=Setter] attribute long activityLoggedAttrSetter2;
+    [PerWorldBindings, ActivityLog=SetterForIsolatedWorlds] attribute long activityLoggedInIsolatedWorldsAttrSetter;
+    [ActivityLog=Getter] attribute long activityLoggedAttrGetter1;
+    [PerWorldBindings, ActivityLog=Getter] attribute long activityLoggedAttrGetter2;
+    [PerWorldBindings, ActivityLog=GetterForIsolatedWorlds] attribute long activityLoggedInIsolatedWorldsAttrGetter;
 };

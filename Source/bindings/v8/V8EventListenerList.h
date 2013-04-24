@@ -31,11 +31,11 @@
 #ifndef V8EventListenerList_h
 #define V8EventListenerList_h
 
-#include "V8EventListener.h"
-#include "V8HiddenPropertyName.h"
+#include "bindings/v8/V8EventListener.h"
+#include "bindings/v8/V8HiddenPropertyName.h"
 
 #include <v8.h>
-#include <wtf/PassRefPtr.h>
+#include "wtf/PassRefPtr.h"
 
 namespace WebCore {
 
@@ -101,7 +101,7 @@ PassRefPtr<V8EventListener> V8EventListenerList::findOrCreateWrapper(v8::Local<v
     if (wrapper)
         return wrapper;
 
-    RefPtr<V8EventListener> wrapperPtr = WrapperType::create(object, isAttribute, WorldContextHandle(UseCurrentWorld));
+    RefPtr<V8EventListener> wrapperPtr = WrapperType::create(object, isAttribute);
     if (wrapperPtr)
         object->SetHiddenValue(wrapperProperty, v8::External::New(wrapperPtr.get()));
 

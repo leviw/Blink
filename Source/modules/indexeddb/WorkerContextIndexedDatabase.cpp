@@ -21,18 +21,17 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  */
 
 #include "config.h"
 
-#include "WorkerContextIndexedDatabase.h"
+#include "modules/indexeddb/WorkerContextIndexedDatabase.h"
 
-#include "IDBFactory.h"
-#include "IDBFactoryBackendInterface.h"
-#include "ScriptExecutionContext.h"
-#include "SecurityOrigin.h"
+#include "core/dom/ScriptExecutionContext.h"
+#include "modules/indexeddb/IDBFactory.h"
+#include "modules/indexeddb/IDBFactoryBackendInterface.h"
 
 namespace WebCore {
 

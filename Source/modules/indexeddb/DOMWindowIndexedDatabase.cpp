@@ -24,14 +24,13 @@
  */
 
 #include "config.h"
-#include "DOMWindowIndexedDatabase.h"
+#include "modules/indexeddb/DOMWindowIndexedDatabase.h"
 
-#include "DOMWindow.h"
-#include "Document.h"
-#include "IDBFactory.h"
-#include "Page.h"
-#include "PageGroupIndexedDatabase.h"
-#include "SecurityOrigin.h"
+#include "core/dom/Document.h"
+#include "core/page/DOMWindow.h"
+#include "core/page/Page.h"
+#include "modules/indexeddb/IDBFactory.h"
+#include "modules/indexeddb/PageGroupIndexedDatabase.h"
 
 namespace WebCore {
 
@@ -58,24 +57,6 @@ DOMWindowIndexedDatabase* DOMWindowIndexedDatabase::from(DOMWindow* window)
         provideTo(window, supplementName(), adoptPtr(supplement));
     }
     return supplement;
-}
-
-void DOMWindowIndexedDatabase::disconnectFrameForPageCache()
-{
-    m_suspendedIDBFactory = m_idbFactory.release();
-    DOMWindowProperty::disconnectFrameForPageCache();
-}
-
-void DOMWindowIndexedDatabase::reconnectFrameFromPageCache(Frame* frame)
-{
-    DOMWindowProperty::reconnectFrameFromPageCache(frame);
-    m_idbFactory = m_suspendedIDBFactory.release();
-}
-
-void DOMWindowIndexedDatabase::willDestroyGlobalObjectInCachedFrame()
-{
-    m_suspendedIDBFactory = nullptr;
-    DOMWindowProperty::willDestroyGlobalObjectInCachedFrame();
 }
 
 void DOMWindowIndexedDatabase::willDestroyGlobalObjectInFrame()

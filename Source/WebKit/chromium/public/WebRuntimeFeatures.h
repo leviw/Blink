@@ -59,9 +59,6 @@ public:
     WEBKIT_EXPORT static void enableApplicationCache(bool);
     WEBKIT_EXPORT static bool isApplicationCacheEnabled();
 
-    WEBKIT_EXPORT static void enableDataTransferItems(bool);
-    WEBKIT_EXPORT static bool isDataTransferItemsEnabled();
-
     WEBKIT_EXPORT static void enableGeolocation(bool);
     WEBKIT_EXPORT static bool isGeolocationEnabled();
 
@@ -122,6 +119,9 @@ public:
     WEBKIT_EXPORT static void enableShadowDOM(bool);
     WEBKIT_EXPORT static bool isShadowDOMEnabled();
 
+    WEBKIT_EXPORT static void enableExperimentalShadowDOM(bool);
+    WEBKIT_EXPORT static bool isExperimentalShadowDOMEnabled();
+
     WEBKIT_EXPORT static void enableCustomDOMElements(bool);
     WEBKIT_EXPORT static bool isCustomDOMElementsEnabled();
 
@@ -161,18 +161,20 @@ public:
     WEBKIT_EXPORT static void enableSeamlessIFrames(bool);
     WEBKIT_EXPORT static bool areSeamlessIFramesEnabled();
 
-    // If the flag is set, we use WebViewClient::showValidationMessage and
-    // hideVlidationMessage for interactive form validation.
-    WEBKIT_EXPORT static void enableNativeValidationMessage(bool);
-    WEBKIT_EXPORT static bool isNativeValidationMessageEnabled();
-
-    // If the flag is set, blink provides the Navigator.doNotTrack accessor
-    // instead of the embedder.
-    WEBKIT_EXPORT static void enableDoNotTrack(bool);
-    WEBKIT_EXPORT static bool isDoNotTrackEnabled();
-
     WEBKIT_EXPORT static void enableWebPInAcceptHeader(bool);
     WEBKIT_EXPORT static bool isWebPInAcceptHeaderEnabled();
+
+    WEBKIT_EXPORT static void enableDirectoryUpload(bool);
+    WEBKIT_EXPORT static bool isDirectoryUploadEnabled();
+
+    WEBKIT_EXPORT static void enableExperimentalWebSocket(bool);
+    WEBKIT_EXPORT static bool isExperimentalWebSocketEnabled();
+
+    WEBKIT_EXPORT static void enableWebMIDI(bool);
+    WEBKIT_EXPORT static bool isWebMIDIEnabled();
+
+    WEBKIT_EXPORT static void enableIMEAPI(bool);
+    WEBKIT_EXPORT static bool isIMEAPIEnabled();
 
 private:
     WebRuntimeFeatures();

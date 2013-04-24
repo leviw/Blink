@@ -31,17 +31,18 @@
 #ifndef V8DOMWindowShell_h
 #define V8DOMWindowShell_h
 
-#include "DOMWrapperWorld.h"
-#include "ScopedPersistent.h"
-#include "SecurityOrigin.h"
-#include "V8PerContextData.h"
-#include "WrapperTypeInfo.h"
-#include <wtf/Forward.h>
-#include <wtf/HashMap.h>
-#include <wtf/PassRefPtr.h>
-#include <wtf/RefCounted.h>
-#include <wtf/RefPtr.h>
-#include <wtf/text/AtomicString.h>
+#include "bindings/v8/DOMWrapperWorld.h"
+#include "bindings/v8/ScopedPersistent.h"
+#include "bindings/v8/V8PerContextData.h"
+#include "bindings/v8/WrapperTypeInfo.h"
+#include "core/page/SecurityOrigin.h"
+#include <v8.h>
+#include "wtf/Forward.h"
+#include "wtf/HashMap.h"
+#include "wtf/PassRefPtr.h"
+#include "wtf/RefCounted.h"
+#include "wtf/RefPtr.h"
+#include "wtf/text/AtomicString.h"
 
 namespace WebCore {
 
@@ -55,7 +56,7 @@ class V8DOMWindowShell {
 public:
     static PassOwnPtr<V8DOMWindowShell> create(Frame*, PassRefPtr<DOMWrapperWorld>, v8::Isolate*);
 
-    v8::Persistent<v8::Context> context() const { return m_context.get(); }
+    v8::Local<v8::Context> context() const { return v8::Local<v8::Context>::New(m_context.get()); }
 
     // Update document object of the frame.
     void updateDocument();
@@ -77,8 +78,6 @@ public:
     void clearForClose(bool destroyGlobal);
 
     DOMWrapperWorld* world() { return m_world.get(); }
-
-    void destroyIsolatedShell();
 
 private:
     V8DOMWindowShell(Frame*, PassRefPtr<DOMWrapperWorld>, v8::Isolate*);

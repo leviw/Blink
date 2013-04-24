@@ -26,6 +26,7 @@
 #include "ExceptionCode.h"
 #include "Frame.h"
 #include "RuntimeEnabledFeatures.h"
+#include "ScriptController.h"
 #include "V8ArrayBufferView.h"
 #include "V8ArrayBufferViewCustom.h"
 #include "V8Binding.h"
@@ -74,6 +75,22 @@ inline void checkTypeOrDieTrying(Float64Array* object)
 }
 #endif // ENABLE(BINDING_INTEGRITY)
 
+#if defined(OS_WIN)
+// In ScriptWrappable, the use of extern function prototypes inside templated static methods has an issue on windows.
+// These prototypes do not pick up the surrounding namespace, so drop out of WebCore as a workaround.
+} // namespace WebCore
+using WebCore::ScriptWrappable;
+using WebCore::V8Float64Array;
+using WebCore::Float64Array;
+#endif
+void initializeScriptWrappableForInterface(Float64Array* object)
+{
+    if (ScriptWrappable::wrapperCanBeStoredInObject(object))
+        ScriptWrappable::setTypeInfoInObject(object, &V8Float64Array::info);
+}
+#if defined(OS_WIN)
+namespace WebCore {
+#endif
 WrapperTypeInfo V8Float64Array::info = { V8Float64Array::GetTemplate, V8Float64Array::derefObject, 0, 0, 0, V8Float64Array::installPerContextPrototypeProperties, &V8ArrayBufferView::info, WrapperTypeObjectPrototype };
 
 namespace Float64ArrayV8Internal {
@@ -121,7 +138,7 @@ v8::Handle<v8::Object> wrap(Float64Array* impl, v8::Handle<v8::Object> creationC
 }
 
 static const V8DOMConfiguration::BatchedMethod V8Float64ArrayMethods[] = {
-    {"set", Float64ArrayV8Internal::setMethodCallback, 0},
+    {"set", Float64ArrayV8Internal::setMethodCallback, 0, 0},
 };
 
 v8::Handle<v8::Value> V8Float64Array::constructorCallback(const v8::Arguments& args)
@@ -145,11 +162,11 @@ static v8::Persistent<v8::FunctionTemplate> ConfigureV8Float64ArrayTemplate(v8::
         V8Float64ArrayMethods, WTF_ARRAY_LENGTH(V8Float64ArrayMethods), isolate, currentWorldType);
     UNUSED_PARAM(defaultSignature); // In some cases, it will not be used.
     desc->SetCallHandler(V8Float64Array::constructorCallback);
+    desc->SetLength(1);
     v8::Local<v8::ObjectTemplate> instance = desc->InstanceTemplate();
     v8::Local<v8::ObjectTemplate> proto = desc->PrototypeTemplate();
     UNUSED_PARAM(instance); // In some cases, it will not be used.
     UNUSED_PARAM(proto); // In some cases, it will not be used.
-    
 
     // Custom Signature 'foo'
     const int fooArgc = 1;

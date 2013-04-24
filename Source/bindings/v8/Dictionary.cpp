@@ -24,47 +24,39 @@
  */
 
 #include "config.h"
-#include "Dictionary.h"
+#include "bindings/v8/Dictionary.h"
 
-#include "ArrayValue.h"
-#include "DOMStringList.h"
-#include "IDBKeyRange.h"
-#include "V8Binding.h"
+#include "V8CSSFontFaceRule.h"
+#include "V8DOMError.h"
 #include "V8DOMWindow.h"
 #include "V8EventTarget.h"
 #include "V8IDBKeyRange.h"
+#include "V8SpeechRecognitionError.h"
+#include "V8SpeechRecognitionResult.h"
+#include "V8SpeechRecognitionResultList.h"
 #include "V8Storage.h"
 #include "V8Uint8Array.h"
-#include "V8Utilities.h"
-#include <wtf/MathExtras.h>
+#include "V8VoidCallback.h"
+#include "bindings/v8/ArrayValue.h"
+#include "bindings/v8/V8Binding.h"
+#include "bindings/v8/V8Utilities.h"
+#include "core/dom/DOMStringList.h"
+#include "modules/indexeddb/IDBKeyRange.h"
+#include "modules/speech/SpeechRecognitionError.h"
+#include "modules/speech/SpeechRecognitionResult.h"
+#include "modules/speech/SpeechRecognitionResultList.h"
+#include "wtf/MathExtras.h"
 
 #if ENABLE(ENCRYPTED_MEDIA)
 #include "V8MediaKeyError.h"
 #endif
 
-#if ENABLE(VIDEO_TRACK)
-#include "TrackBase.h"
 #include "V8TextTrack.h"
-#endif
-
-#if ENABLE(SCRIPTED_SPEECH)
-#include "SpeechRecognitionError.h"
-#include "SpeechRecognitionResult.h"
-#include "SpeechRecognitionResultList.h"
-#include "V8SpeechRecognitionError.h"
-#include "V8SpeechRecognitionResult.h"
-#include "V8SpeechRecognitionResultList.h"
-#endif
+#include "core/html/track/TrackBase.h"
 
 #if ENABLE(MEDIA_STREAM)
-#include "MediaStream.h"
 #include "V8MediaStream.h"
-#endif
-
-#if ENABLE(FONT_LOAD_EVENTS)
-#include "V8CSSFontFaceRule.h"
-#include "V8DOMError.h"
-#include "V8VoidCallback.h"
+#include "modules/mediastream/MediaStream.h"
 #endif
 
 namespace WebCore {
@@ -353,7 +345,6 @@ bool Dictionary::get(const String& key, RefPtr<MediaKeyError>& value) const
 }
 #endif
 
-#if ENABLE(VIDEO_TRACK)
 bool Dictionary::get(const String& key, RefPtr<TrackBase>& value) const
 {
     v8::Local<v8::Value> v8Value;
@@ -373,9 +364,7 @@ bool Dictionary::get(const String& key, RefPtr<TrackBase>& value) const
     value = source;
     return true;
 }
-#endif
 
-#if ENABLE(SCRIPTED_SPEECH)
 bool Dictionary::get(const String& key, RefPtr<SpeechRecognitionError>& value) const
 {
     v8::Local<v8::Value> v8Value;
@@ -411,8 +400,6 @@ bool Dictionary::get(const String& key, RefPtr<SpeechRecognitionResultList>& val
         value = V8SpeechRecognitionResultList::toNative(v8::Handle<v8::Object>::Cast(v8Value));
     return true;
 }
-
-#endif
 
 #if ENABLE(MEDIA_STREAM)
 bool Dictionary::get(const String& key, RefPtr<MediaStream>& value) const
@@ -501,7 +488,6 @@ bool Dictionary::get(const String& key, ArrayValue& value) const
     return true;
 }
 
-#if ENABLE(FONT_LOAD_EVENTS)
 bool Dictionary::get(const String& key, RefPtr<CSSFontFaceRule>& value) const
 {
     v8::Local<v8::Value> v8Value;
@@ -548,7 +534,6 @@ bool Dictionary::get(const String& key, RefPtr<VoidCallback>& value) const
     value = V8VoidCallback::create(v8Value, getScriptExecutionContext());
     return true;
 }
-#endif
 
 bool Dictionary::getOwnPropertiesAsStringHashMap(HashMap<String, String>& hashMap) const
 {

@@ -28,7 +28,6 @@
 
 #include "../../../Platform/chromium/public/WebCommon.h"
 #include "../../../Platform/chromium/public/WebString.h"
-#include "WebExceptionCode.h"
 #include "WebIDBCallbacks.h"
 #include "WebIDBKey.h"
 
@@ -46,10 +45,10 @@ public:
         PrevNoDuplicate = 3,
     };
 
-    virtual void advance(unsigned long, WebIDBCallbacks*, WebExceptionCode&) { WEBKIT_ASSERT_NOT_REACHED(); }
-    virtual void continueFunction(const WebIDBKey&, WebIDBCallbacks*, WebExceptionCode&) { WEBKIT_ASSERT_NOT_REACHED(); }
-    virtual void deleteFunction(WebIDBCallbacks*, WebExceptionCode&) { WEBKIT_ASSERT_NOT_REACHED(); }
-    virtual void prefetchContinue(int numberToFetch, WebIDBCallbacks*, WebExceptionCode&) { WEBKIT_ASSERT_NOT_REACHED(); }
+    virtual void advance(unsigned long, WebIDBCallbacks*) { WEBKIT_ASSERT_NOT_REACHED(); }
+    virtual void continueFunction(const WebIDBKey&, WebIDBCallbacks*) { WEBKIT_ASSERT_NOT_REACHED(); }
+    virtual void deleteFunction(WebIDBCallbacks*) { WEBKIT_ASSERT_NOT_REACHED(); }
+    virtual void prefetchContinue(int numberToFetch, WebIDBCallbacks*) { WEBKIT_ASSERT_NOT_REACHED(); }
     virtual void prefetchReset(int usedPrefetches, int unusedPrefetches) { WEBKIT_ASSERT_NOT_REACHED(); }
     virtual void postSuccessHandlerCallback() { } // Only used in frontend.
 

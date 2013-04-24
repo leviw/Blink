@@ -29,9 +29,9 @@
 
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
 
-#include "DOMWindowProperty.h"
-#include "Supplementable.h"
-#include <wtf/text/WTFString.h>
+#include "core/page/DOMWindowProperty.h"
+#include "core/platform/Supplementable.h"
+#include "wtf/text/WTFString.h"
 
 namespace WebCore {
 
@@ -45,9 +45,6 @@ public:
     static NotificationCenter* webkitNotifications(DOMWindow*);
     static DOMWindowNotifications* from(DOMWindow*);
 
-    virtual void disconnectFrameForPageCache() OVERRIDE;
-    virtual void reconnectFrameFromPageCache(Frame*) OVERRIDE;
-    virtual void willDestroyGlobalObjectInCachedFrame() OVERRIDE;
     virtual void willDestroyGlobalObjectInFrame() OVERRIDE;
     virtual void willDetachGlobalObjectFromFrame() OVERRIDE;
 
@@ -59,7 +56,6 @@ private:
 
     DOMWindow* m_window;
     RefPtr<NotificationCenter> m_notificationCenter;
-    RefPtr<NotificationCenter> m_suspendedNotificationCenter;
 };
 
 } // namespace WebCore

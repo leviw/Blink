@@ -33,8 +33,9 @@
 #if ENABLE(SVG)
 #include "V8SVGDocument.h"
 
-#include "Frame.h"
-#include "V8DOMWindowShell.h"
+#include "bindings/v8/ScriptController.h"
+#include "bindings/v8/V8DOMWindowShell.h"
+#include "core/page/Frame.h"
 
 namespace WebCore {
 

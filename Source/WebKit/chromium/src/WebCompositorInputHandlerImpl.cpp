@@ -112,7 +112,7 @@ void WebCompositorInputHandlerImpl::handleInputEvent(const WebInputEvent& event)
         break;
     }
     if (event.modifiers & WebInputEvent::IsLastInputEventForCurrentVSync)
-        m_inputHandlerClient->didReceiveLastInputEventForVSync();
+        m_inputHandlerClient->didReceiveLastInputEventForVSync(event.timeStampSeconds);
 }
 
 WebCompositorInputHandlerImpl::EventDisposition WebCompositorInputHandlerImpl::handleInputEventInternal(const WebInputEvent& event)
@@ -207,12 +207,10 @@ WebCompositorInputHandlerImpl::EventDisposition WebCompositorInputHandlerImpl::h
             return DidHandle;
         else if (!m_flingActiveOnMainThread)
             return DropEvent;
-#if ENABLE(TOUCH_EVENT_TRACKING)
     } else if (event.type == WebInputEvent::TouchStart) {
         const WebTouchEvent& touchEvent = *static_cast<const WebTouchEvent*>(&event);
         if (!m_inputHandlerClient->haveTouchEventHandlersAt(touchEvent.touches[0].position))
             return DropEvent;
-#endif
     } else if (WebInputEvent::isKeyboardEventType(event.type)) {
          cancelCurrentFling();
     }
@@ -222,7 +220,18 @@ WebCompositorInputHandlerImpl::EventDisposition WebCompositorInputHandlerImpl::h
 
 WebCompositorInputHandlerImpl::EventDisposition WebCompositorInputHandlerImpl::handleGestureFling(const WebGestureEvent& gestureEvent)
 {
-    WebInputHandlerClient::ScrollStatus scrollStatus = m_inputHandlerClient->scrollBegin(WebPoint(gestureEvent.x, gestureEvent.y), WebInputHandlerClient::ScrollInputTypeNonBubblingGesture);
+    WebInputHandlerClient::ScrollStatus scrollStatus;
+
+    if (gestureEvent.sourceDevice == WebGestureEvent::Touchpad) {
+        scrollStatus = m_inputHandlerClient->scrollBegin(WebPoint(gestureEvent.x, gestureEvent.y), WebInputHandlerClient::ScrollInputTypeNonBubblingGesture);
+    } else {
+        if (!m_gestureScrollOnImplThread) {
+            scrollStatus = WebInputHandlerClient::ScrollStatusOnMainThread;
+        }else{
+            scrollStatus = m_inputHandlerClient->flingScrollBegin();
+        }
+    }
+
     switch (scrollStatus) {
     case WebInputHandlerClient::ScrollStatusStarted: {
         if (gestureEvent.sourceDevice == WebGestureEvent::Touchpad)

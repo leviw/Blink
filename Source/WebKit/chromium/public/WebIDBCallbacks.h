@@ -31,7 +31,6 @@
 
 namespace WebKit {
 
-class WebDOMStringList;
 class WebData;
 class WebIDBCursor;
 class WebIDBDatabase;
@@ -39,6 +38,7 @@ class WebIDBDatabaseError;
 class WebIDBIndex;
 class WebIDBKey;
 class WebIDBKeyPath;
+class WebString;
 struct WebIDBMetadata;
 
 class WebIDBCallbacks {
@@ -48,7 +48,7 @@ public:
     // For classes that follow the PImpl pattern, pass a const reference.
     // For the rest, pass ownership to the callee via a pointer.
     virtual void onError(const WebIDBDatabaseError&) { WEBKIT_ASSERT_NOT_REACHED(); }
-    virtual void onSuccess(const WebDOMStringList&) { WEBKIT_ASSERT_NOT_REACHED(); }
+    virtual void onSuccess(const WebVector<WebString>&) { WEBKIT_ASSERT_NOT_REACHED(); }
     virtual void onSuccess(WebIDBCursor*, const WebIDBKey& key, const WebIDBKey& primaryKey, const WebData&) { WEBKIT_ASSERT_NOT_REACHED(); }
     virtual void onSuccess(WebIDBDatabase*) { WEBKIT_ASSERT_NOT_REACHED(); }
     virtual void onSuccess(WebIDBDatabase*, const WebIDBMetadata&) { WEBKIT_ASSERT_NOT_REACHED(); }
